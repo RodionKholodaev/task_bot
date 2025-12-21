@@ -11,7 +11,10 @@ from aiogram.types import (
     Message,
     ReplyKeyboardMarkup,
     KeyboardButton,
+    InlineKeyboardMarkup,
+    CallbackQuery,
 )
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from sqlalchemy import (
     create_engine,
@@ -23,7 +26,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
-from ai_client import classify_task  # наша функция работы с OpenRouter
+from ai_client import classify_task  # функция работы с OpenRouter
 
 # ---------- Конфиг ----------
 
@@ -94,14 +97,17 @@ def get_tasks_by_category(user_id: int, category: str) -> List[Task]:
         session.close()
 
 
-# Здесь можно будет реализовать пометку выполненной и удаление:
 def mark_task_completed(task_id: int, user_id: int) -> bool:
     session: Session = SessionLocal()
     try:
-        task = session.query(Task).filter(
-            Task.id == task_id,
-            Task.user_id == user_id,
-        ).first()
+        task = (
+            session.query(Task)
+            .filter(
+                Task.id == task_id,
+                Task.user_id == user_id,
+            )
+            .first()
+        )
         if not task:
             return False
         task.is_completed = True
@@ -114,10 +120,14 @@ def mark_task_completed(task_id: int, user_id: int) -> bool:
 def delete_task(task_id: int, user_id: int) -> bool:
     session: Session = SessionLocal()
     try:
-        task = session.query(Task).filter(
-            Task.id == task_id,
-            Task.user_id == user_id,
-        ).first()
+        task = (
+            session.query(Task)
+            .filter(
+                Task.id == task_id,
+                Task.user_id == user_id,
+            )
+            .first()
+        )
         if not task:
             return False
         session.delete(task)
@@ -127,11 +137,11 @@ def delete_task(task_id: int, user_id: int) -> bool:
         session.close()
 
 
-# ---------- Клавиатура ----------
+# ---------- Клавиатуры ----------
 
 def main_keyboard() -> ReplyKeyboardMarkup:
     """
-    Клавиатура с фильтрами задач.
+    Клавиатура с фильтрами задач (reply-кнопки).
     """
     btn_5 = KeyboardButton(text="≤ 5 минут")
     btn_30 = KeyboardButton(text="≤ 30 минут")
@@ -147,6 +157,20 @@ def main_keyboard() -> ReplyKeyboardMarkup:
         one_time_keyboard=False,
     )
     return keyboard
+
+
+def task_inline_kb(task_id: int) -> InlineKeyboardMarkup:
+    """
+    Инлайн‑клавиатура под конкретной задачей.
+    Сейчас только кнопка удаления, при желании можно добавить "✅ Готово".
+    """
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text="🗑 Удалить",
+        callback_data=f"delete_task:{task_id}",
+    )
+    builder.adjust(1)
+    return builder.as_markup()
 
 
 # ---------- Утилиты ----------
@@ -182,7 +206,7 @@ async def cmd_start(message: Message) -> None:
     await message.answer(text, reply_markup=main_keyboard())
 
 
-# Обработка кнопок фильтрации задач
+# Обработка кнопок фильтрации задач (reply-кнопки)
 @dp.message(F.text.in_(list(CATEGORY_LABELS.values())))
 async def handle_filter_buttons(message: Message) -> None:
     user_id = message.from_user.id
@@ -199,12 +223,19 @@ async def handle_filter_buttons(message: Message) -> None:
         await message.answer("Задач в этой категории пока нет.", reply_markup=main_keyboard())
         return
 
-    lines = [f"Задачи: {CATEGORY_LABELS[category]}"]
-    for t in tasks:
-        # Показываем id, чтобы в будущем можно было помечать/удалять
-        lines.append(f"{t.id}. {t.description}")
+    # Заголовок
+    await message.answer(
+        f"Задачи: {CATEGORY_LABELS[category]}",
+        reply_markup=main_keyboard(),
+    )
 
-    await message.answer("\n".join(lines), reply_markup=main_keyboard())
+    # Каждую задачу отправляем отдельным сообщением с инлайн‑кнопкой удаления
+    for t in tasks:
+        text = f"{t.id}. {t.description}"
+        await message.answer(
+            text,
+            reply_markup=task_inline_kb(task_id=t.id),
+        )
 
 
 # Любой другой текст — это новая задача
@@ -222,7 +253,7 @@ async def handle_new_task(message: Message) -> None:
 
     await message.answer("Думаю над задачей, определяю длительность...")
 
-    # Классифицируем задачу через OpenRouter (GPT-3.5 Turbo)
+    # Классифицируем задачу через OpenRouter
     category = await classify_task(description)
 
     # Сохраняем в БД
@@ -235,9 +266,47 @@ async def handle_new_task(message: Message) -> None:
         f"ID: {task.id}\n"
         f"Текст: {task.description}\n"
         f"Категория: {human_label}",
-        reply_markup=main_keyboard(),
+        reply_markup=task_inline_kb(task_id=task.id),
     )
 
+
+# ---------- CallbackQuery хендлеры ----------
+
+@dp.callback_query(F.data.startswith("delete_task:"))
+async def handle_delete_task_callback(callback: CallbackQuery) -> None:
+    """
+    Удаление задачи по нажатию на инлайн-кнопку.
+    Удаляем запись в БД и сообщение в чате.
+    """
+    user_id = callback.from_user.id
+    data = callback.data  # вида "delete_task:123"
+    _, task_id_str = data.split(":")
+    task_id = int(task_id_str)
+
+    ok = delete_task(task_id=task_id, user_id=user_id)
+    if not ok:
+        await callback.answer("Задача не найдена или уже удалена.", show_alert=True)
+        # Можно убрать кнопки, чтобы не мешали
+        try:
+            await callback.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        return
+
+    # Удаляем сообщение с задачей из чата
+    try:
+        await callback.message.delete()
+    except Exception:
+        # Если удалить нельзя (редко, но бывает), просто изменим текст
+        try:
+            await callback.message.edit_text("Задача удалена.")
+        except Exception:
+            pass
+
+    await callback.answer("Задача удалена ✅")
+
+
+# ---------- Точка входа ----------
 
 async def main() -> None:
     init_db()
