@@ -6,6 +6,7 @@ from typing import Literal, Optional
 from dotenv import load_dotenv
 from openai import OpenAI
 
+# загружаем переменные из .env в систему, чтобы потом можно было достать
 load_dotenv()
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -18,10 +19,11 @@ client = OpenAI(
     api_key=OPENROUTER_API_KEY,
 )
 
+# даем короткое название для сложной конструкции
 TaskCategory = Literal["short_5", "short_30", "short_120", "long"]
 
 
-async def classify_task(description: str) -> TaskCategory:
+async def classify_task(description: str) -> TaskCategory: # возвращаем один из вариантов из TaskCategory
     """
     Отправляет описание задачи в GPT-3.5 Turbo через OpenRouter
     и возвращает одну из категорий:

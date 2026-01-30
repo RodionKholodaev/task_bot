@@ -40,6 +40,7 @@ DB_URL = os.getenv("DATABASE_URL", "sqlite:///tasks.db")
 
 # ---------- БД ----------
 
+# создали класс для всех таблиц в бд
 Base = declarative_base()
 
 
@@ -61,11 +62,11 @@ SessionLocal = sessionmaker(bind=engine)
 def init_db() -> None:
     Base.metadata.create_all(bind=engine)
 
-
+# создание строки задачи в бд по полному описанию
 def create_task(user_id: int, description: str, category: str) -> Task:
-    session: Session = SessionLocal()
+    session: Session = SessionLocal() # подключились в бд
     try:
-        task = Task(
+        task = Task( # создали новую задачу для добавления
             user_id=user_id,
             description=description,
             category=category,
@@ -73,12 +74,12 @@ def create_task(user_id: int, description: str, category: str) -> Task:
         )
         session.add(task)
         session.commit()
-        session.refresh(task)
+        session.refresh(task) # забираем в task id, который присвоила бд
         return task
     finally:
-        session.close()
+        session.close() # отключились от бд
 
-
+# получение задач по категории и пользователю
 def get_tasks_by_category(user_id: int, category: str) -> List[Task]:
     session: Session = SessionLocal()
     try:
@@ -96,7 +97,7 @@ def get_tasks_by_category(user_id: int, category: str) -> List[Task]:
     finally:
         session.close()
 
-
+# обозначение задачи выполненой 
 def mark_task_completed(task_id: int, user_id: int) -> bool:
     session: Session = SessionLocal()
     try:
@@ -116,7 +117,7 @@ def mark_task_completed(task_id: int, user_id: int) -> bool:
     finally:
         session.close()
 
-
+# удаление задачи
 def delete_task(task_id: int, user_id: int) -> bool:
     session: Session = SessionLocal()
     try:
@@ -138,7 +139,7 @@ def delete_task(task_id: int, user_id: int) -> bool:
 
 
 # ---------- Клавиатуры ----------
-
+# главная клавиатура
 def main_keyboard() -> ReplyKeyboardMarkup:
     """
     Клавиатура с фильтрами задач (reply-кнопки).
@@ -158,7 +159,7 @@ def main_keyboard() -> ReplyKeyboardMarkup:
     )
     return keyboard
 
-
+# кнопка под задачей
 def task_inline_kb(task_id: int) -> InlineKeyboardMarkup:
     """
     Инлайн‑клавиатура под конкретной задачей.
@@ -196,6 +197,7 @@ bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 
+# срабатывает на команду /start
 @dp.message(CommandStart())
 async def cmd_start(message: Message) -> None:
     text = (
@@ -206,7 +208,7 @@ async def cmd_start(message: Message) -> None:
     await message.answer(text, reply_markup=main_keyboard())
 
 
-# Обработка кнопок фильтрации задач (reply-кнопки)
+# Обработка кнопок фильтрации задач 
 @dp.message(F.text.in_(list(CATEGORY_LABELS.values())))
 async def handle_filter_buttons(message: Message) -> None:
     user_id = message.from_user.id
@@ -242,7 +244,7 @@ async def handle_filter_buttons(message: Message) -> None:
 @dp.message()
 async def handle_new_task(message: Message) -> None:
     user_id = message.from_user.id
-    description = message.text.strip()
+    description = message.text.strip() # удаляем ненужные пробелы и переходы на новые строки
 
     if not description:
         await message.answer(
@@ -280,7 +282,7 @@ async def handle_delete_task_callback(callback: CallbackQuery) -> None:
     """
     user_id = callback.from_user.id
     data = callback.data  # вида "delete_task:123"
-    _, task_id_str = data.split(":")
+    _, task_id_str = data.split(":") # пометили что первый элемент мусорный
     task_id = int(task_id_str)
 
     ok = delete_task(task_id=task_id, user_id=user_id)
