@@ -1,7 +1,6 @@
-# bot.py
 import asyncio
 import os
-from datetime import datetime
+from datetime import datetime, timedelta, date, time
 from typing import List, Dict
 
 from dotenv import load_dotenv
@@ -24,299 +23,377 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Date,
-    Time
+    Time,
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
-from ai_client import classify_task  # функция работы с OpenRouter
+from ai_client import classify_task
 
-# ---------- Конфиг ----------
+# ================= CONFIG =================
 
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-if not BOT_TOKEN:
-    raise RuntimeError("BOT_TOKEN is not set in environment")
-
 DB_URL = os.getenv("DATABASE_URL", "sqlite:///tasks.db")
 
-# ---------- БД ----------
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher()
 
-# создали класс для всех таблиц в бд
+# ================= DATABASE =================
+
 Base = declarative_base()
+engine = create_engine(DB_URL, echo=False)
+SessionLocal = sessionmaker(bind=engine)
 
 
 class Task(Base):
     __tablename__ = "tasks"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True)
     user_id = Column(Integer, index=True, nullable=False)
     description = Column(String, nullable=False)
-    category = Column(String, nullable=False)  # short_5, short_30, short_120, long
-    is_completed = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    deadline_day = Column(Date, nullable=True, index=True)   # Только дата (гггг-мм-дд)
-    deadline_time = Column(Time, nullable=True)             # Только время (чч:мм:сс)
+    category = Column(String, nullable=False)
+    is_completed = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    deadline_day = Column(Date, nullable=True)
+    deadline_time = Column(Time, nullable=True)
 
 
-engine = create_engine(DB_URL, echo=False)
-SessionLocal = sessionmaker(bind=engine)
+class UserSettings(Base):
+    __tablename__ = "user_settings"
+
+    user_id = Column(Integer, primary_key=True)
+    utc_offset = Column(Integer, nullable=False)
+    notify_time = Column(Time, nullable=False)
 
 
-def init_db() -> None:
+def init_db():
     Base.metadata.create_all(bind=engine)
 
-# создание строки задачи в бд по полному описанию
-def create_task(user_id: int, description: str, category: str) -> Task:
-    session: Session = SessionLocal() # подключились в бд
+
+# ================= DB HELPERS =================
+
+def get_session() -> Session:
+    return SessionLocal()
+
+
+def get_user_settings(user_id: int) -> UserSettings | None:
+    s = get_session()
     try:
-        task = Task( # создали новую задачу для добавления
-            user_id=user_id,
-            description=description,
-            category=category,
-            is_completed=False,
-        )
-        session.add(task)
-        session.commit()
-        session.refresh(task) # забираем в task id, который присвоила бд
+        return s.query(UserSettings).filter_by(user_id=user_id).first()
+    finally:
+        s.close()
+
+
+def upsert_user_settings(user_id: int, utc_offset: int, notify_time: time):
+    s = get_session()
+    try:
+        settings = s.query(UserSettings).filter_by(user_id=user_id).first()
+        if settings:
+            settings.utc_offset = utc_offset
+            settings.notify_time = notify_time
+        else:
+            s.add(UserSettings(
+                user_id=user_id,
+                utc_offset=utc_offset,
+                notify_time=notify_time
+            ))
+        s.commit()
+    finally:
+        s.close()
+
+
+def save_task(task: Task):
+    s = get_session()
+    try:
+        s.add(task)
+        s.commit()
+        s.refresh(task)
         return task
     finally:
-        session.close() # отключились от бд
+        s.close()
 
-# получение задач по категории и пользователю
-def get_tasks_by_category(user_id: int, category: str) -> List[Task]:
-    session: Session = SessionLocal()
+
+def get_tasks_today(user_id: int, day: date) -> List[Task]:
+    s = get_session()
     try:
-        tasks = (
-            session.query(Task)
-            .filter(
-                Task.user_id == user_id,
-                Task.category == category,
-                Task.is_completed == False,
-            )
-            .order_by(Task.created_at.asc())
-            .all()
-        )
-        return tasks
+        return s.query(Task).filter(
+            Task.user_id == user_id,
+            Task.deadline_day == day,
+            Task.is_completed == False
+        ).order_by(Task.deadline_time).all()
     finally:
-        session.close()
+        s.close()
 
-# обозначение задачи выполненой 
-def mark_task_completed(task_id: int, user_id: int) -> bool:
-    session: Session = SessionLocal()
+
+def get_tasks_week(user_id: int, start: date, end: date) -> List[Task]:
+    s = get_session()
     try:
-        task = (
-            session.query(Task)
-            .filter(
-                Task.id == task_id,
-                Task.user_id == user_id,
-            )
-            .first()
-        )
+        return s.query(Task).filter(
+            Task.user_id == user_id,
+            Task.deadline_day >= start,
+            Task.deadline_day <= end,
+            Task.is_completed == False
+        ).order_by(Task.deadline_day).all()
+    finally:
+        s.close()
+
+
+def get_all_tasks(user_id: int) -> List[Task]:
+    s = get_session()
+    try:
+        return s.query(Task).filter(Task.user_id == user_id).all()
+    finally:
+        s.close()
+
+
+def mark_done(task_id: int, user_id: int) -> bool:
+    s = get_session()
+    try:
+        task = s.query(Task).filter_by(id=task_id, user_id=user_id).first()
         if not task:
             return False
         task.is_completed = True
-        session.commit()
+        s.commit()
         return True
     finally:
-        session.close()
+        s.close()
 
-# удаление задачи
+
 def delete_task(task_id: int, user_id: int) -> bool:
-    session: Session = SessionLocal()
+    s = get_session()
     try:
-        task = (
-            session.query(Task)
-            .filter(
-                Task.id == task_id,
-                Task.user_id == user_id,
-            )
-            .first()
-        )
+        task = s.query(Task).filter_by(id=task_id, user_id=user_id).first()
         if not task:
             return False
-        session.delete(task)
-        session.commit()
+        s.delete(task)
+        s.commit()
         return True
     finally:
-        session.close()
+        s.close()
 
 
-# ---------- Клавиатуры ----------
-# главная клавиатура
-def main_keyboard() -> ReplyKeyboardMarkup:
-    """
-    Клавиатура с фильтрами задач (reply-кнопки).
-    """
-    btn_5 = KeyboardButton(text="≤ 5 минут")
-    btn_30 = KeyboardButton(text="≤ 30 минут")
-    btn_120 = KeyboardButton(text="≤ 2 часов")
-    btn_long = KeyboardButton(text="Сложные задачи")
+# ================= KEYBOARDS =================
 
-    keyboard = ReplyKeyboardMarkup(
+def main_keyboard():
+    return ReplyKeyboardMarkup(
         keyboard=[
-            [btn_5, btn_30],
-            [btn_120, btn_long],
+            [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="📆 Неделя")],
+            [KeyboardButton(text="📋 Все задачи")],
+            [KeyboardButton(text="⏱ По длительности")],
+            [KeyboardButton(text="⚙️ Настройки")],
         ],
         resize_keyboard=True,
-        one_time_keyboard=False,
     )
-    return keyboard
 
-# кнопка под задачей
-def task_inline_kb(task_id: int) -> InlineKeyboardMarkup:
-    """
-    Инлайн‑клавиатура под конкретной задачей.
-    Сейчас только кнопка удаления, при желании можно добавить "✅ Готово".
-    """
-    builder = InlineKeyboardBuilder()
-    builder.button(
-        text="🗑 Удалить",
-        callback_data=f"delete_task:{task_id}",
+
+def category_keyboard():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="≤ 5 минут"), KeyboardButton(text="≤ 30 минут")],
+            [KeyboardButton(text="≤ 2 часов"), KeyboardButton(text="Сложные задачи")],
+            [KeyboardButton(text="⬅️ Назад")],
+        ],
+        resize_keyboard=True,
     )
-    builder.adjust(1)
-    return builder.as_markup()
 
 
-# ---------- Утилиты ----------
-
-CATEGORY_LABELS: Dict[str, str] = {
-    "short_5": "≤ 5 минут",
-    "short_30": "≤ 30 минут",
-    "short_120": "≤ 2 часов",
-    "long": "Сложные задачи",
+CATEGORY_MAP = {
+    "≤ 5 минут": "short_5",
+    "≤ 30 минут": "short_30",
+    "≤ 2 часов": "short_120",
+    "Сложные задачи": "long",
 }
 
 
-def category_from_button(text: str) -> str | None:
-    for key, label in CATEGORY_LABELS.items():
-        if text == label:
-            return key
-    return None
+def task_inline(task_id: int):
+    kb = InlineKeyboardBuilder()
+    kb.button(text="✅ Выполнено", callback_data=f"done:{task_id}")
+    kb.button(text="🗑 Удалить", callback_data=f"delete:{task_id}")
+    kb.adjust(2)
+    return kb.as_markup()
 
 
-# ---------- Бот ----------
+# ================= HANDLERS =================
 
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
-
-
-# срабатывает на команду /start
 @dp.message(CommandStart())
-async def cmd_start(message: Message) -> None:
-    text = (
-        "Привет! Это бот для задач.\n\n"
-        "Просто напиши текст задачи — я определю её сложность с помощью нейросети и сохраню.\n"
-        "Или нажми одну из кнопок, чтобы посмотреть задачи по длительности."
+async def start(message: Message):
+    await message.answer(
+        "Привет 👋\nНапиши задачу обычным текстом — я всё разберу сам.",
+        reply_markup=main_keyboard()
     )
-    await message.answer(text, reply_markup=main_keyboard())
 
 
-# Обработка кнопок фильтрации задач 
-@dp.message(F.text.in_(list(CATEGORY_LABELS.values())))
-async def handle_filter_buttons(message: Message) -> None:
+@dp.message(F.text == "⏱ По длительности")
+async def by_duration(message: Message):
+    await message.answer("Выбери категорию:", reply_markup=category_keyboard())
+
+
+@dp.message(F.text == "⬅️ Назад")
+async def back(message: Message):
+    await message.answer("Главное меню", reply_markup=main_keyboard())
+
+
+@dp.message(F.text.in_(CATEGORY_MAP))
+async def show_by_category(message: Message):
     user_id = message.from_user.id
-    btn_text = message.text
+    category = CATEGORY_MAP[message.text]
 
-    category = category_from_button(btn_text)
-    if category is None:
-        await message.answer("Не удалось определить категорию для этой кнопки.")
-        return
-
-    tasks = get_tasks_by_category(user_id=user_id, category=category)
+    s = get_session()
+    try:
+        tasks = s.query(Task).filter(
+            Task.user_id == user_id,
+            Task.category == category,
+            Task.is_completed == False
+        ).all()
+    finally:
+        s.close()
 
     if not tasks:
-        await message.answer("Задач в этой категории пока нет.", reply_markup=main_keyboard())
+        await message.answer("Задач нет")
         return
 
-    # Заголовок
-    await message.answer(
-        f"Задачи: {CATEGORY_LABELS[category]}",
-        reply_markup=main_keyboard(),
-    )
-
-    # Каждую задачу отправляем отдельным сообщением с инлайн‑кнопкой удаления
     for t in tasks:
-        text = f"{t.id}. {t.description}"
-        await message.answer(
-            text,
-            reply_markup=task_inline_kb(task_id=t.id),
-        )
+        await message.answer(t.description, reply_markup=task_inline(t.id))
 
 
-# Любой другой текст — это новая задача
-@dp.message()
-async def handle_new_task(message: Message) -> None:
-    user_id = message.from_user.id
-    description = message.text.strip() # удаляем ненужные пробелы и переходы на новые строки
+@dp.message(F.text == "📅 Сегодня")
+async def today(message: Message):
+    settings = get_user_settings(message.from_user.id)
+    offset = settings.utc_offset if settings else 0
+    today = (datetime.utcnow() + timedelta(hours=offset)).date()
 
-    if not description:
-        await message.answer(
-            "Пустое сообщение не похоже на задачу. Напиши, что нужно сделать.",
-            reply_markup=main_keyboard(),
-        )
+    tasks = get_tasks_today(message.from_user.id, today)
+    if not tasks:
+        await message.answer("Сегодня задач нет 🎉")
         return
 
-    await message.answer("Думаю над задачей, определяю длительность...")
+    for t in tasks:
+        await message.answer(t.description, reply_markup=task_inline(t.id))
 
-    # Классифицируем задачу через OpenRouter
-    category = await classify_task(description)
 
-    # Сохраняем в БД
-    task = create_task(user_id=user_id, description=description, category=category)
+@dp.message(F.text == "📆 Неделя")
+async def week(message: Message):
+    settings = get_user_settings(message.from_user.id)
+    offset = settings.utc_offset if settings else 0
 
-    human_label = CATEGORY_LABELS.get(category, "Неизвестная категория")
+    start = (datetime.utcnow() + timedelta(hours=offset)).date()
+    end = start + timedelta(days=7)
 
+    tasks = get_tasks_week(message.from_user.id, start, end)
+    if not tasks:
+        await message.answer("На неделю задач нет 🎉")
+        return
+
+    for t in tasks:
+        await message.answer(
+            f"{t.deadline_day}: {t.description}",
+            reply_markup=task_inline(t.id)
+        )
+
+
+@dp.message(F.text == "📋 Все задачи")
+async def all_tasks(message: Message):
+    tasks = get_all_tasks(message.from_user.id)
+    if not tasks:
+        await message.answer("Задач нет")
+        return
+
+    for t in tasks:
+        status = "✅" if t.is_completed else "⏳"
+        await message.answer(f"{status} {t.description}", reply_markup=task_inline(t.id))
+
+
+@dp.message(F.text == "⚙️ Настройки")
+async def settings(message: Message):
     await message.answer(
-        f"Записал задачу:\n"
-        f"ID: {task.id}\n"
-        f"Текст: {task.description}\n"
-        f"Категория: {human_label}",
-        reply_markup=task_inline_kb(task_id=task.id),
+        "Отправь настройки в формате:\nUTC_OFFSET HH:MM\n\nПример:\n+3 09:00"
     )
 
 
-# ---------- CallbackQuery хендлеры ----------
+@dp.message(F.text.regexp(r"^[+-]?\d+\s\d{2}:\d{2}$"))
+async def save_settings(message: Message):
+    offset_str, time_str = message.text.split()
+    upsert_user_settings(
+        message.from_user.id,
+        int(offset_str),
+        datetime.strptime(time_str, "%H:%M").time()
+    )
+    await message.answer("Настройки сохранены ✅", reply_markup=main_keyboard())
 
-@dp.callback_query(F.data.startswith("delete_task:"))
-async def handle_delete_task_callback(callback: CallbackQuery) -> None:
-    """
-    Удаление задачи по нажатию на инлайн-кнопку.
-    Удаляем запись в БД и сообщение в чате.
-    """
-    user_id = callback.from_user.id
-    data = callback.data  # вида "delete_task:123"
-    _, task_id_str = data.split(":") # пометили что первый элемент мусорный
-    task_id = int(task_id_str)
 
-    ok = delete_task(task_id=task_id, user_id=user_id)
-    if not ok:
-        await callback.answer("Задача не найдена или уже удалена.", show_alert=True)
-        # Можно убрать кнопки, чтобы не мешали
-        try:
-            await callback.message.edit_reply_markup(reply_markup=None)
-        except Exception:
-            pass
-        return
+@dp.message()
+async def new_task(message: Message):
+    data = await classify_task(message.text)
 
-    # Удаляем сообщение с задачей из чата
-    try:
+    deadline_day = datetime.strptime(data["date"], "%Y-%m-%d").date() if data.get("date") else None
+    deadline_time = datetime.strptime(data["time"], "%H:%M").time() if data.get("time") else None
+
+    task = Task(
+        user_id=message.from_user.id,
+        description=data["task"],
+        category=data["category"],
+        deadline_day=deadline_day,
+        deadline_time=deadline_time,
+    )
+
+    save_task(task)
+
+    await message.answer("Задача добавлена ✅", reply_markup=task_inline(task.id))
+
+
+# ================= CALLBACKS =================
+
+@dp.callback_query(F.data.startswith("done:"))
+async def done(callback: CallbackQuery):
+    task_id = int(callback.data.split(":")[1])
+    if mark_done(task_id, callback.from_user.id):
+        await callback.message.edit_text("✅ Выполнено")
+    await callback.answer()
+
+
+@dp.callback_query(F.data.startswith("delete:"))
+async def delete(callback: CallbackQuery):
+    task_id = int(callback.data.split(":")[1])
+    if delete_task(task_id, callback.from_user.id):
         await callback.message.delete()
-    except Exception:
-        # Если удалить нельзя (редко, но бывает), просто изменим текст
+    await callback.answer()
+
+
+# ================= NOTIFICATIONS =================
+
+async def notification_loop():
+    while True:
+        now = datetime.utcnow()
+
+        s = get_session()
         try:
-            await callback.message.edit_text("Задача удалена.")
-        except Exception:
-            pass
+            users = s.query(UserSettings).all()
+        finally:
+            s.close()
 
-    await callback.answer("Задача удалена ✅")
+        for u in users:
+            local = now + timedelta(hours=u.utc_offset)
+            if (
+                local.hour == u.notify_time.hour and
+                local.minute == u.notify_time.minute
+            ):
+                tasks = get_tasks_today(u.user_id, local.date())
+                if tasks:
+                    text = "🔔 Задачи на сегодня:\n" + "\n".join(
+                        f"- {t.description}" for t in tasks
+                    )
+                    await bot.send_message(u.user_id, text)
+
+        await asyncio.sleep(60)
 
 
-# ---------- Точка входа ----------
+# ================= ENTRY =================
 
-async def main() -> None:
+async def main():
     init_db()
-    print("Bot started")
+    asyncio.create_task(notification_loop())
     await dp.start_polling(bot)
 
 

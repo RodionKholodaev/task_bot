@@ -25,7 +25,7 @@ client = OpenAI(
 
 # UTC+time_delta
 time_delta = 3
-offset = timezone(timedelta(hours=time_delta = 3))
+offset = timezone(timedelta(hours=time_delta))
 now = datetime.now(offset)
 date = now.date()
 time = now.time()
