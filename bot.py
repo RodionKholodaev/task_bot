@@ -23,6 +23,8 @@ from sqlalchemy import (
     String,
     Boolean,
     DateTime,
+    Date,
+    Time
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
@@ -53,6 +55,8 @@ class Task(Base):
     category = Column(String, nullable=False)  # short_5, short_30, short_120, long
     is_completed = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    deadline_day = Column(Date, nullable=True, index=True)   # Только дата (гггг-мм-дд)
+    deadline_time = Column(Time, nullable=True)             # Только время (чч:мм:сс)
 
 
 engine = create_engine(DB_URL, echo=False)
