@@ -1,6 +1,13 @@
+#FIXME неправильно записывается время задачи
+#TODO не выводится текст задачи и информация о ней при ее создании
+#TODO настроить логирование
+#TODO настроить обработку отключения api ключа
+#TODO более удобный ввод настроек
+#TODO проверка напоминания
+
 import asyncio
 import os
-from datetime import datetime, timedelta, date, time
+from datetime import datetime, timedelta, date, time, timezone
 from typing import List, Dict
 
 from dotenv import load_dotenv
@@ -139,6 +146,10 @@ def get_tasks_week(user_id: int, start: date, end: date) -> List[Task]:
     finally:
         s.close()
 
+def get_user_date(utc_offset: int) -> str:
+    user_tz = timezone(timedelta(hours=utc_offset))
+    user_datetime = datetime.now(user_tz)
+    return user_datetime.strftime("%Y-%m-%d")
 
 def get_all_tasks(user_id: int) -> List[Task]:
     s = get_session()
@@ -325,22 +336,70 @@ async def save_settings(message: Message):
 
 @dp.message()
 async def new_task(message: Message):
-    data = await classify_task(message.text)
+    settings = get_user_settings(message.from_user.id)
+    if not settings:
+        await message.answer("Не найден часовой пояс пользователя")
+        return
 
-    deadline_day = datetime.strptime(data["date"], "%Y-%m-%d").date() if data.get("date") else None
-    deadline_time = datetime.strptime(data["time"], "%H:%M").time() if data.get("time") else None
+    user_date = get_user_date(settings.utc_offset)
 
+    data = await classify_task(
+        f"сегодня {user_date}, {message.text}"
+    )
+
+    # Безопасное извлечение даты и времени
+    try:
+        deadline_day = datetime.strptime(data["date"], "%Y-%m-%d").date() if data.get("date") else None
+    except (ValueError, TypeError):
+        deadline_day = None
+
+    try:
+        # Проверяем, не пустая ли строка времени
+        time_str = data.get("time")
+        deadline_time = datetime.strptime(time_str, "%H:%M").time() if time_str else None
+    except (ValueError, TypeError):
+        deadline_time = None
+
+    # Создаем объект задачи
     task = Task(
         user_id=message.from_user.id,
-        description=data["task"],
-        category=data["category"],
+        description=data.get("task", message.text), # если ИИ не вернул текст, берем текст сообщения
+        category=data.get("category", "short_30"),
         deadline_day=deadline_day,
         deadline_time=deadline_time,
     )
 
+    # Сохраняем в БД
     save_task(task)
 
-    await message.answer("Задача добавлена ✅", reply_markup=task_inline(task.id))
+    # --- ФОРМИРУЕМ КРАСИВЫЙ ОТВЕТ ---
+    
+    # Маппинг категорий для пользователя
+    readable_categories = {
+        "short_5": "⚡️ До 5 минут",
+        "short_30": "⏳ До 30 минут",
+        "short_120": "🕒 До 2 часов",
+        "long": "🐘 Сложная/долгая"
+    }
+    
+    cat_text = readable_categories.get(task.category, task.category)
+    date_text = task.deadline_day 
+    time_text = task.deadline_time
+
+    response_text = (
+        f"✅ **Задача добавлена!**\n\n"
+        f"📝 **Что:** {task.description}\n"
+        f"📁 **Категория:** {cat_text}\n"
+        f"📅 **Дата:** {date_text}\n"
+        f"⏰ **Время:** {time_text}"
+    )
+
+    await message.answer(
+        # Используем parse_mode="Markdown" для жирного шрифта
+        response_text, 
+        reply_markup=task_inline(task.id),
+        parse_mode="Markdown"
+    )
 
 
 # ================= CALLBACKS =================
