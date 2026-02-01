@@ -96,4 +96,4 @@ async def classify_task(description: str) -> dict:
         print("попал в exception")
         # На проде лучше логировать ошибку
         print(f"Error calling OpenRouter: {e}")
-        return "short_30"
+        return f"Error calling OpenRouter: {e}"
