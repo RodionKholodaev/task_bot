@@ -31,7 +31,7 @@ date = now.date()
 time = now.time()
 
 async def classify_task(description: str) -> dict: 
-
+    print("попал в classify_task")
     system_msg = """Ты — ассистент по тайм-менеджменту. Твоя задача — классифицировать задачу пользователя по времени выполнения и разделять ее на составные части.
     
     ПРАВИЛА ОТВЕТА:
@@ -72,6 +72,7 @@ async def classify_task(description: str) -> dict:
     user_msg = description
 
     try:
+        print("перед получением ответа")
         # Вызов chat completion через OpenRouter [web:45][web:49][web:76]
         response = client.chat.completions.create(
             model="openai/gpt-3.5-turbo",
@@ -84,6 +85,7 @@ async def classify_task(description: str) -> dict:
             max_tokens=50,
             temperature=0.1,
         )
+        print("после получения ответа")
 
         content: str = response.choices[0].message.content
         data = json.loads(content)
@@ -91,6 +93,7 @@ async def classify_task(description: str) -> dict:
         return data  
 
     except Exception as e:
+        print("попал в exception")
         # На проде лучше логировать ошибку
         print(f"Error calling OpenRouter: {e}")
         return "short_30"

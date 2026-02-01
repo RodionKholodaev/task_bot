@@ -1,9 +1,11 @@
 # список дел:
-#TODO настроить логирование
+#TODO настроить логирование (слабенькое, но есть)
 #TODO настроить обработку отключения api ключа
 #TODO более удобный ввод настроек
 #TODO сделать так чтобы при выводе задачи выводилась и время и дата если они есть
 #TODO расставить коментарии
+#TODO во всех задачах выводит те, что уже выполнены
+#TODO сделать нормальный вывод даты
 
 
 import asyncio
@@ -37,6 +39,8 @@ from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
 from ai_client import classify_task
 
+import logging
+logging.basicConfig(level=logging.INFO)
 # ================= CONFIG =================
 
 load_dotenv()
@@ -357,6 +361,10 @@ async def new_task(message: Message):
         f"сегодня {user_date}, {message.text}"
     )
 
+    if type(data) == str:
+        print(data)
+        await message.answer(f"какая-то ошибка с неросетью. Текст ошибки {data}")
+
     # Безопасное извлечение даты и времени
     try:
         deadline_day = datetime.strptime(data["date"], "%Y-%m-%d").date() if data.get("date") else None
@@ -467,4 +475,5 @@ async def main():
 
 
 if __name__ == "__main__":
+    print("бот начал работу")
     asyncio.run(main())
