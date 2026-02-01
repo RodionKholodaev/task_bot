@@ -1,9 +1,10 @@
-#FIXME неправильно записывается время задачи
-#TODO не выводится текст задачи и информация о ней при ее создании
+# список дел:
 #TODO настроить логирование
 #TODO настроить обработку отключения api ключа
 #TODO более удобный ввод настроек
-#TODO проверка напоминания
+#TODO сделать так чтобы при выводе задачи выводилась и время и дата если они есть
+#TODO расставить коментарии
+
 
 import asyncio
 import os
@@ -48,11 +49,11 @@ dp = Dispatcher()
 
 # ================= DATABASE =================
 
-Base = declarative_base()
-engine = create_engine(DB_URL, echo=False)
-SessionLocal = sessionmaker(bind=engine)
+Base = declarative_base() # класс бд
+engine = create_engine(DB_URL, echo=False) # то что дает пойтону подключится к бд
+SessionLocal = sessionmaker(bind=engine) # фабрика сессий 
 
-
+# модель для задачи
 class Task(Base):
     __tablename__ = "tasks"
 
@@ -66,7 +67,7 @@ class Task(Base):
     deadline_day = Column(Date, nullable=True)
     deadline_time = Column(Time, nullable=True)
 
-
+# модель пользователя
 class UserSettings(Base):
     __tablename__ = "user_settings"
 
@@ -74,17 +75,17 @@ class UserSettings(Base):
     utc_offset = Column(Integer, nullable=False)
     notify_time = Column(Time, nullable=False)
 
-
+# создание таблиц, если нужно при запуске
 def init_db():
     Base.metadata.create_all(bind=engine)
 
 
 # ================= DB HELPERS =================
-
+# побращение к сессии TODO нужно убрать
 def get_session() -> Session:
     return SessionLocal()
 
-
+# получение данные о пользоваетеле TODO нужно сделать через with
 def get_user_settings(user_id: int) -> UserSettings | None:
     s = get_session()
     try:
@@ -92,7 +93,7 @@ def get_user_settings(user_id: int) -> UserSettings | None:
     finally:
         s.close()
 
-
+# обносление настроек пользователя
 def upsert_user_settings(user_id: int, utc_offset: int, notify_time: time):
     s = get_session()
     try:
@@ -110,7 +111,7 @@ def upsert_user_settings(user_id: int, utc_offset: int, notify_time: time):
     finally:
         s.close()
 
-
+# сохранение задачи
 def save_task(task: Task):
     s = get_session()
     try:
@@ -121,7 +122,7 @@ def save_task(task: Task):
     finally:
         s.close()
 
-
+# получение задач на сегодня
 def get_tasks_today(user_id: int, day: date) -> List[Task]:
     s = get_session()
     try:
@@ -133,7 +134,7 @@ def get_tasks_today(user_id: int, day: date) -> List[Task]:
     finally:
         s.close()
 
-
+# получение задач на неделю
 def get_tasks_week(user_id: int, start: date, end: date) -> List[Task]:
     s = get_session()
     try:
@@ -145,12 +146,13 @@ def get_tasks_week(user_id: int, start: date, end: date) -> List[Task]:
         ).order_by(Task.deadline_day).all()
     finally:
         s.close()
-
+# получение даты в часовом поясе пользователя
 def get_user_date(utc_offset: int) -> str:
     user_tz = timezone(timedelta(hours=utc_offset))
     user_datetime = datetime.now(user_tz)
     return user_datetime.strftime("%Y-%m-%d")
 
+# получение всех задач
 def get_all_tasks(user_id: int) -> List[Task]:
     s = get_session()
     try:
@@ -158,7 +160,7 @@ def get_all_tasks(user_id: int) -> List[Task]:
     finally:
         s.close()
 
-
+# пометка задачи выполненой
 def mark_done(task_id: int, user_id: int) -> bool:
     s = get_session()
     try:
@@ -171,7 +173,7 @@ def mark_done(task_id: int, user_id: int) -> bool:
     finally:
         s.close()
 
-
+# удаление задачи
 def delete_task(task_id: int, user_id: int) -> bool:
     s = get_session()
     try:
@@ -186,8 +188,9 @@ def delete_task(task_id: int, user_id: int) -> bool:
 
 
 # ================= KEYBOARDS =================
-
+# главное меню
 def main_keyboard():
+    # возвращаем ответное меню
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="📆 Неделя")],
@@ -195,7 +198,7 @@ def main_keyboard():
             [KeyboardButton(text="⏱ По длительности")],
             [KeyboardButton(text="⚙️ Настройки")],
         ],
-        resize_keyboard=True,
+        resize_keyboard=True, # расмер кнопок подстраивается под размер текста в них
     )
 
 
@@ -217,13 +220,13 @@ CATEGORY_MAP = {
     "Сложные задачи": "long",
 }
 
-
+# кнопки, которые прилипает к сообщению
 def task_inline(task_id: int):
     kb = InlineKeyboardBuilder()
     kb.button(text="✅ Выполнено", callback_data=f"done:{task_id}")
     kb.button(text="🗑 Удалить", callback_data=f"delete:{task_id}")
-    kb.adjust(2)
-    return kb.as_markup()
+    kb.adjust(2) # в отдной строке 2 кнопки
+    return kb.as_markup() # возвращаем собранную встроенную клавиатуру
 
 
 # ================= HANDLERS =================
@@ -231,19 +234,26 @@ def task_inline(task_id: int):
 @dp.message(CommandStart())
 async def start(message: Message):
     await message.answer(
-        "Привет 👋\nНапиши задачу обычным текстом — я всё разберу сам.",
-        reply_markup=main_keyboard()
+    "Привет! 👋 Я твой умный менеджер задач.\n\n"
+            "**Что я умею:**\n"
+            "🤖 **Понимаю свободный текст** — просто напиши «Купить хлеб в 18:00», и я сам создам задачу с датой.\n"
+            "🔔 **Напоминаю о делах** — пришлю список задач на день в удобное для тебя время.\n"
+            "⏳ **Сортирую по времени** — помогу найти быстрые пятиминутки или сложные дела.\n"
+            "📅 **Планирую** — покажу задачи на сегодня, неделю или всё сразу.\n\n"
+            "Настрой свой часовой пояс в настройках, чтобы уведомления приходили вовремя!",
+        reply_markup=main_keyboard(),
+        parse_mode="Markdown"
     )
 
 
-@dp.message(F.text == "⏱ По длительности")
+@dp.message(F.text == "⏱ По длительности") # свзязывает нажатие кнопи с функцией
 async def by_duration(message: Message):
-    await message.answer("Выбери категорию:", reply_markup=category_keyboard())
+    await message.answer("Выбери категорию:", reply_markup=category_keyboard()) # переход к новому меню
 
 
-@dp.message(F.text == "⬅️ Назад")
+@dp.message(F.text == "⬅️ Назад") # свзязывает нажатие кнопи с функцией
 async def back(message: Message):
-    await message.answer("Главное меню", reply_markup=main_keyboard())
+    await message.answer("Главное меню", reply_markup=main_keyboard()) # возврат к старому меню
 
 
 @dp.message(F.text.in_(CATEGORY_MAP))
