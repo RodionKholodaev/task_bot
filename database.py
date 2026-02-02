@@ -95,7 +95,7 @@ def get_all_tasks(user_id: int) -> List[Task]:
     """Получение всех задач пользователя"""
     s = get_session()
     try:
-        return s.query(Task).filter(Task.user_id == user_id).all()
+        return s.query(Task).filter(Task.user_id == user_id, Task.is_completed==False).all()
     finally:
         s.close()
 
