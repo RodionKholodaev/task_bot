@@ -23,13 +23,6 @@ client = OpenAI(
 
 
 
-# UTC+time_delta
-time_delta = 3
-offset = timezone(timedelta(hours=time_delta))
-now = datetime.now(offset)
-date = now.date()
-time = now.time()
-
 async def classify_task(description: str) -> dict: 
     print("попал в classify_task")
     system_msg = """Ты — ассистент по тайм-менеджменту. Твоя задача — классифицировать задачу пользователя по времени выполнения и разделять ее на составные части.
@@ -75,7 +68,7 @@ async def classify_task(description: str) -> dict:
         print("перед получением ответа")
         # Вызов chat completion через OpenRouter [web:45][web:49][web:76]
         response = client.chat.completions.create(
-            model="openai/gpt-3.5-turbo",
+            model="google/gemini-2.0-flash-lite-001",
             messages=[
                 {"role": "system", "content": system_msg},
                 {"role": "user", "content": user_msg},
