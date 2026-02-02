@@ -150,10 +150,10 @@ async def new_task(message: Message):
     # Получаем дату в часовом поясе пользователя
     user_tz = timezone(timedelta(hours=settings.utc_offset))
     user_datetime = datetime.now(user_tz)
-    user_date = user_datetime.strftime("%Y-%m-%d")
+    dt_string = user_datetime.strftime("%Y-%m-%d %H:%M")
 
     # Классифицируем задачу с помощью ИИ
-    data = await classify_task(f"сегодня {user_date}, {message.text}")
+    data = await classify_task(f"сегодня {dt_string}, {message.text}")
 
     if isinstance(data, str):
         print(data)
