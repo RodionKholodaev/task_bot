@@ -90,6 +90,17 @@ def get_tasks_week(user_id: int, start: date, end: date) -> List[Task]:
     finally:
         s.close()
 
+def get_tasks_with_reminders(user_settings: UserSettings) -> List[Task]:
+        s = get_session()
+        try:
+            tasks_with_reminders = s.query(Task).filter(
+                Task.user_id == user_settings.user_id,
+                Task.is_completed == False,
+                Task.remind_date.isnot(None)  # Напоминание установлено
+            ).all()
+            return tasks_with_reminders
+        finally:
+            s.close()
 
 def get_all_tasks(user_id: int) -> List[Task]:
     """Получение всех задач пользователя"""

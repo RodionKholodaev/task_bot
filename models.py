@@ -19,6 +19,9 @@ class Task(Base):
     deadline_day = Column(Date, nullable=True)
     deadline_time = Column(Time, nullable=True)
 
+    remind_date = Column(Date, nullable=True)
+    remind_time = Column(Time, nullable=True)
+
 
 class UserSettings(Base):
     """Модель пользователя"""
@@ -27,3 +30,4 @@ class UserSettings(Base):
     user_id = Column(Integer, primary_key=True)
     utc_offset = Column(Integer, nullable=False)
     notify_time = Column(Time, nullable=False)
+

@@ -171,6 +171,21 @@ async def new_task(message: Message):
         deadline_time = datetime.strptime(time_str, "%H:%M").time() if time_str else None
     except (ValueError, TypeError):
         deadline_time = None
+    
+    try:
+        print("начал работать с remind_date")
+        remind_date_str=data.get("remind_date")
+        remind_date=datetime.strptime(remind_date_str, "%Y-%m-%d").date() if remind_date_str else None
+        print(remind_date)
+    except Exception as e:
+        print(f"попал в exception в remind_date, ошибка: {e}")
+        remind_date=None
+
+    try:
+        remind_time_str=data.get("remind_time")
+        remind_time=datetime.strptime(remind_time_str, "%H:%M").time() if remind_time_str else None
+    except:
+        remind_time=None
 
     # Создаем объект задачи
     task = Task(
@@ -179,6 +194,8 @@ async def new_task(message: Message):
         category=data.get("category", "short_30"),
         deadline_day=deadline_day,
         deadline_time=deadline_time,
+        remind_time=remind_time,
+        remind_date=remind_date
     )
 
     # Сохраняем в БД
@@ -194,7 +211,9 @@ async def new_task(message: Message):
         f"📝 **Что:** {task.description}\n"
         f"📁 **Категория:** {cat_text}\n"
         f"📅 **Дата:** {date_text}\n"
-        f"⏰ **Время:** {time_text}"
+        f"⏰ **Время:** {data.get('time') if data.get('time')!='' else None}\n"
+        f"🚨 **Напоминание дата:** {data.get('remind_date') if data.get('remind_date')!='' else None}\n"
+        f"⏱️ **Напоминание время:** {data.get('remind_time') if data.get('remind_time')!='' else None}"
     )
 
     await message.answer(
