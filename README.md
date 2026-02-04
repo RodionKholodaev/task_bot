@@ -1,6 +1,6 @@
 # Task Bot
 
-Telegram бот для управления задачами с поддержкой AI.
+Telegram бот для управления задачами с помощью AI.
 
 ## Возможности
 
@@ -12,7 +12,6 @@ Telegram бот для управления задачами с поддержк
 
 ## Требования
 
-- Python 3.8+
 - Telegram Bot Token
 - OpenRouter API Key
 
@@ -20,7 +19,7 @@ Telegram бот для управления задачами с поддержк
 
 1. Клонировать репозиторий
 ```bash
-git clone <ваш-репозиторий>
+git clone https://github.com/RodionKholodaev/task_bot.git
 cd task_bot
 ```
 
