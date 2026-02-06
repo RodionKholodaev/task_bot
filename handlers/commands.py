@@ -57,7 +57,7 @@ async def show_by_category(message: Message):
 
     for t in tasks:
         await message.answer(
-            f" {t.deadline_day.strftime("%d-%m-%Y") if t.deadline_day else ""}{t.description}",
+            f" {t.deadline_day.strftime("%d-%m-%Y") if t.deadline_day else ""} {t.description}",
             reply_markup=task_inline(t.id)
         )
 
@@ -75,7 +75,8 @@ async def today(message: Message):
         return
 
     for t in tasks:
-        await message.answer(t.description, reply_markup=task_inline(t.id))
+        deadlinne_time=t.deadline_time if t.deadline_time else ""
+        await message.answer(f"{deadlinne_time} {t.description}", reply_markup=task_inline(t.id))
 
 
 @router.message(F.text == "📆 Неделя")
@@ -93,8 +94,9 @@ async def week(message: Message):
         return
 
     for t in tasks:
+        deadlinne_time=t.deadline_time if t.deadline_time else ""
         await message.answer(
-            f"{t.deadline_day.strftime("%d-%m-%Y")}: {t.description}",
+            f"{t.deadline_day.strftime("%d-%m-%Y")} {deadlinne_time}: {t.description}",
             reply_markup=task_inline(t.id)
         )
 
@@ -198,17 +200,20 @@ async def new_task(message: Message):
 
     # Формируем красивый ответ
     cat_text = READABLE_CATEGORIES.get(task.category, task.category)
-    date_text = task.deadline_day
-    time_text = task.deadline_time
+    date_text = task.deadline_day.strftime("%d-%m-%Y") if task.deadline_day else None
+    time = task.deadline_time.strftime("%H:%M") if task.deadline_time else None
+    remind_date_str=task.remind_date.strftime("%d-%m-%Y") if task.remind_date else None
+    remind_time = task.remind_time.strftime("%H:%M") if task.remind_time else None
+
 
     response_text = (
         f"✅ **Задача добавлена!**\n\n"
         f"📝 **Что:** {task.description}\n"
         f"📁 **Категория:** {cat_text}\n"
         f"📅 **Дата:** {date_text}\n"
-        f"⏰ **Время:** {data.get('time') if data.get('time')!='' else None}\n"
-        f"🚨 **Напоминание дата:** {data.get('remind_date') if data.get('remind_date')!='' else None}\n"
-        f"⏱️ **Напоминание время:** {data.get('remind_time') if data.get('remind_time')!='' else None}"
+        f"⏰ **Время:** {time}\n"
+        f"🚨 **Напоминание дата:** {remind_date_str}\n"
+        f"⏱️ **Напоминание время:** {remind_time}"
     )
 
     await message.answer(
