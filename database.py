@@ -23,6 +23,12 @@ def get_session() -> Session:
 
 
 # ================= CRUD операции =================
+def get_all_users() -> UserSettings | None:
+    s=get_session()
+    try:
+        return s.query(UserSettings).all()
+    finally:
+        s.close()
 
 def get_user_settings(user_id: int) -> UserSettings | None:
     """Получение настроек пользователя"""
@@ -90,17 +96,29 @@ def get_tasks_week(user_id: int, start: date, end: date) -> List[Task]:
     finally:
         s.close()
 
-def get_tasks_with_reminders(user_settings: UserSettings) -> List[Task]:
-        s = get_session()
-        try:
-            tasks_with_reminders = s.query(Task).filter(
-                Task.user_id == user_settings.user_id,
-                Task.is_completed == False,
-                Task.remind_date.isnot(None)  # Напоминание установлено
-            ).all()
-            return tasks_with_reminders
-        finally:
-            s.close()
+def get_tasks_to_remind(user_id: int) -> List[Task]:
+    s = get_session()
+    try:
+        return s.query(Task).filter(
+                    Task.user_id == user_id,
+                    Task.is_completed == False,
+                    Task.remind_date.isnot(None)  # Напоминание установлено
+                ).all()
+    finally:
+        s.close()
+
+
+def get_tasks_by_category(user_id: int, category: str) -> List[Task]:
+    s = get_session()
+    try:
+        return s.query(Task).filter(
+            Task.user_id == user_id,
+            Task.category == category,
+            Task.is_completed == False
+        ).all()
+    finally:
+        s.close()
+
 
 def get_all_tasks(user_id: int) -> List[Task]:
     """Получение всех задач пользователя"""

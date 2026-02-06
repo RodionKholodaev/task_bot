@@ -5,7 +5,7 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 
 from keyboards import main_keyboard, category_keyboard, CATEGORY_MAP, READABLE_CATEGORIES, task_inline
-from database import get_user_settings, get_tasks_today, get_tasks_week, get_all_tasks
+from database import get_user_settings, get_tasks_today, get_tasks_week, get_all_tasks, get_tasks_by_category, upsert_user_settings
 from models import Task
 from ai_client import classify_task
 from database import save_task
@@ -49,22 +49,17 @@ async def show_by_category(message: Message):
     user_id = message.from_user.id
     category = CATEGORY_MAP[message.text]
 
-    s = get_session()
-    try:
-        tasks = s.query(Task).filter(
-            Task.user_id == user_id,
-            Task.category == category,
-            Task.is_completed == False
-        ).all()
-    finally:
-        s.close()
+    tasks = get_tasks_by_category(user_id, category)
 
     if not tasks:
         await message.answer("Задач нет")
         return
 
     for t in tasks:
-        await message.answer(t.description, reply_markup=task_inline(t.id))
+        await message.answer(
+            f" {t.deadline_day.strftime("%d-%m-%Y") if t.deadline_day else ""}{t.description}",
+            reply_markup=task_inline(t.id)
+        )
 
 
 @router.message(F.text == "📅 Сегодня")
@@ -99,7 +94,7 @@ async def week(message: Message):
 
     for t in tasks:
         await message.answer(
-            f"{t.deadline_day}: {t.description}",
+            f"{t.deadline_day.strftime("%d-%m-%Y")}: {t.description}",
             reply_markup=task_inline(t.id)
         )
 
@@ -114,7 +109,8 @@ async def all_tasks(message: Message):
 
     for t in tasks:
         status = "✅" if t.is_completed else "⏳"
-        await message.answer(f"{status} {t.description}", reply_markup=task_inline(t.id))
+        deadline = t.deadline_day.strftime("%d-%m-%Y") if t.deadline_day else ""
+        await message.answer(f"{status} {deadline} {t.description}", reply_markup=task_inline(t.id))
 
 
 @router.message(F.text == "⚙️ Настройки")
@@ -128,7 +124,6 @@ async def settings(message: Message):
 @router.message(F.text.regexp(r"^[+-]?\d+\s\d{2}:\d{2}$"))
 async def save_settings(message: Message):
     """Сохранить пользовательские настройки"""
-    from database import upsert_user_settings
     
     offset_str, time_str = message.text.split()
     upsert_user_settings(

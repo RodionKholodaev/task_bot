@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from aiogram import Bot
 
 from config import BOT_TOKEN
-from database import get_session, get_tasks_today, get_all_tasks, get_tasks_with_reminders
+from database import get_session, get_tasks_today, get_all_tasks, get_tasks_to_remind, get_all_users
 from models import UserSettings, Task
 
 bot = Bot(token=BOT_TOKEN)
@@ -14,12 +14,8 @@ async def notification_loop():
     while True:
         now_utc = datetime.utcnow()
 
-        s = get_session()
-        try:
-            users = s.query(UserSettings).all()
-        finally:
-            s.close()
-
+        users = get_all_users()
+ 
         for u in users:
             local_now = now_utc + timedelta(hours=u.utc_offset)
             local_date = local_now.date()
@@ -38,33 +34,31 @@ async def notification_loop():
                     await bot.send_message(u.user_id, text)
 
             # ========= 2. НАПОМИНАНИЯ ПО ЗАДАЧАМ =========
-            s = get_session()
-            try:
-                remind_tasks = s.query(Task).filter(
-                    Task.user_id == u.user_id,
-                    Task.is_completed == False,
-                    Task.remind_date.isnot(None)  # Напоминание установлено
-                ).all()
 
-                for task in remind_tasks:
-                    remind_at = (
-                        task.remind_time
-                        if task.remind_time
-                        else u.notify_time
+            remind_tasks = get_tasks_to_remind(u.user_id)
+
+            for task in remind_tasks:
+                remind_at = (
+                    task.remind_time
+                    if task.remind_time
+                    else u.notify_time
+                )
+                remind_day=(
+                    task.remind_date
+                    if task.remind_date
+                    else local_date
+                )
+
+                if (
+                    remind_at.hour == local_time.hour and
+                    remind_at.minute == local_time.minute and
+                    remind_day==local_date
+                ):
+                    await bot.send_message(
+                        u.user_id,
+                        f"⏰ Напоминание:\n{task.description}"
                     )
+                    task.reminded = True
 
-                    if (
-                        remind_at.hour == local_time.hour and
-                        remind_at.minute == local_time.minute
-                    ):
-                        await bot.send_message(
-                            u.user_id,
-                            f"⏰ Напоминание:\n{task.description}"
-                        )
-                        task.reminded = True
-
-                s.commit()
-            finally:
-                s.close()
 
         await asyncio.sleep(60)
