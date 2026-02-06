@@ -150,74 +150,75 @@ async def new_task(message: Message):
     dt_string = user_datetime.strftime("%Y-%m-%d %H:%M")
 
     # Классифицируем задачу с помощью ИИ
-    data = await classify_task(f"сегодня {dt_string}, {message.text}")
+    data_list = await classify_task(f"сегодня {dt_string}, {message.text}")
 
-    if isinstance(data, str):
-        print(data)
-        await message.answer(f"какая-то ошибка с нейросетью. Текст ошибки {data}")
+    if isinstance(data_list, str):
+        print(data_list)
+        await message.answer(f"какая-то ошибка с нейросетью. Текст ошибки {data_list}")
         return
+    for data in data_list:
 
-    # Безопасное извлечение даты и времени
-    try:
-        deadline_day = datetime.strptime(data["date"], "%Y-%m-%d").date() if data.get("date") else None
-    except (ValueError, TypeError):
-        deadline_day = None
+        # Безопасное извлечение даты и времени
+        try:
+            deadline_day = datetime.strptime(data["date"], "%Y-%m-%d").date() if data.get("date") else None
+        except (ValueError, TypeError):
+            deadline_day = None
 
-    try:
-        time_str = data.get("time")
-        deadline_time = datetime.strptime(time_str, "%H:%M").time() if time_str else None
-    except (ValueError, TypeError):
-        deadline_time = None
-    
-    try:
-        print("начал работать с remind_date")
-        remind_date_str=data.get("remind_date")
-        remind_date=datetime.strptime(remind_date_str, "%Y-%m-%d").date() if remind_date_str else None
-        print(remind_date)
-    except Exception as e:
-        print(f"попал в exception в remind_date, ошибка: {e}")
-        remind_date=None
+        try:
+            time_str = data.get("time")
+            deadline_time = datetime.strptime(time_str, "%H:%M").time() if time_str else None
+        except (ValueError, TypeError):
+            deadline_time = None
+        
+        try:
+            print("начал работать с remind_date")
+            remind_date_str=data.get("remind_date")
+            remind_date=datetime.strptime(remind_date_str, "%Y-%m-%d").date() if remind_date_str else None
+            print(remind_date)
+        except Exception as e:
+            print(f"попал в exception в remind_date, ошибка: {e}")
+            remind_date=None
 
-    try:
-        remind_time_str=data.get("remind_time")
-        remind_time=datetime.strptime(remind_time_str, "%H:%M").time() if remind_time_str else None
-    except:
-        remind_time=None
+        try:
+            remind_time_str=data.get("remind_time")
+            remind_time=datetime.strptime(remind_time_str, "%H:%M").time() if remind_time_str else None
+        except:
+            remind_time=None
 
-    # Создаем объект задачи
-    task = Task(
-        user_id=message.from_user.id,
-        description=data.get("task", message.text),
-        category=data.get("category", "short_30"),
-        deadline_day=deadline_day,
-        deadline_time=deadline_time,
-        remind_time=remind_time,
-        remind_date=remind_date
-    )
+        # Создаем объект задачи
+        task = Task(
+            user_id=message.from_user.id,
+            description=data.get("task", message.text),
+            category=data.get("category", "short_30"),
+            deadline_day=deadline_day,
+            deadline_time=deadline_time,
+            remind_time=remind_time,
+            remind_date=remind_date
+        )
 
-    # Сохраняем в БД
-    save_task(task)
+        # Сохраняем в БД
+        save_task(task)
 
-    # Формируем красивый ответ
-    cat_text = READABLE_CATEGORIES.get(task.category, task.category)
-    date_text = task.deadline_day.strftime("%d-%m-%Y") if task.deadline_day else None
-    time = task.deadline_time.strftime("%H:%M") if task.deadline_time else None
-    remind_date_str=task.remind_date.strftime("%d-%m-%Y") if task.remind_date else None
-    remind_time = task.remind_time.strftime("%H:%M") if task.remind_time else None
+        # Формируем красивый ответ
+        cat_text = READABLE_CATEGORIES.get(task.category, task.category)
+        date_text = task.deadline_day.strftime("%d-%m-%Y") if task.deadline_day else None
+        time = task.deadline_time.strftime("%H:%M") if task.deadline_time else None
+        remind_date_str=task.remind_date.strftime("%d-%m-%Y") if task.remind_date else None
+        remind_time = task.remind_time.strftime("%H:%M") if task.remind_time else None
 
 
-    response_text = (
-        f"✅ **Задача добавлена!**\n\n"
-        f"📝 **Что:** {task.description}\n"
-        f"📁 **Категория:** {cat_text}\n"
-        f"📅 **Дата:** {date_text}\n"
-        f"⏰ **Время:** {time}\n"
-        f"🚨 **Напоминание дата:** {remind_date_str}\n"
-        f"⏱️ **Напоминание время:** {remind_time}"
-    )
+        response_text = (
+            f"✅ **Задача добавлена!**\n\n"
+            f"📝 **Что:** {task.description}\n"
+            f"📁 **Категория:** {cat_text}\n"
+            f"📅 **Дата:** {date_text}\n"
+            f"⏰ **Время:** {time}\n"
+            f"🚨 **Напоминание дата:** {remind_date_str}\n"
+            f"⏱️ **Напоминание время:** {remind_time}"
+        )
 
-    await message.answer(
-        response_text,
-        reply_markup=task_inline(task.id),
-        parse_mode="Markdown"
-    )
+        await message.answer(
+            response_text,
+            reply_markup=task_inline(task.id),
+            parse_mode="Markdown"
+        )
