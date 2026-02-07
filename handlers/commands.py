@@ -150,6 +150,8 @@ async def new_task(message: Message):
     dt_string = user_datetime.strftime("%Y-%m-%d %H:%M")
 
     # Классифицируем задачу с помощью ИИ
+    if len(message.text) > 500:
+        await message.answer("Слишком длинный текст")
     data_list = await classify_task(f"сегодня {dt_string}, {message.text}")
 
     if isinstance(data_list, str):
