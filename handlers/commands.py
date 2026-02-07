@@ -152,15 +152,20 @@ async def new_task(message: Message):
     # Классифицируем задачу с помощью ИИ
     if len(message.text) > 500:
         await message.answer("Слишком длинный текст")
-    data_list = await classify_task(f"сегодня {dt_string}, {message.text}")
+        return
+    
+    data_message = await classify_task(f"сегодня {dt_string}, {message.text}")
 
-    if isinstance(data_list, str):
-        if "Error code" in data_list:
-            print(data_list)
-            await message.answer(f"какая-то ошибка с нейросетью. Текст ошибки {data_list}")
-            return
-        else:
-            await message.answer(data_list)
+    if isinstance(data_message, str):
+        print(data_message)
+        await message.answer(f"какая-то ошибка с нейросетью. Текст ошибки {data_message}")
+        return
+
+    if data_message.get("type")=="chat":
+        await message.answer(data_message.get("message"))
+        return
+    
+    data_list = data_message.get("items")
     for data in data_list:
 
         # Безопасное извлечение даты и времени
