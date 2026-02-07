@@ -153,9 +153,12 @@ async def new_task(message: Message):
     data_list = await classify_task(f"сегодня {dt_string}, {message.text}")
 
     if isinstance(data_list, str):
-        print(data_list)
-        await message.answer(f"какая-то ошибка с нейросетью. Текст ошибки {data_list}")
-        return
+        if "Error code" in data_list:
+            print(data_list)
+            await message.answer(f"какая-то ошибка с нейросетью. Текст ошибки {data_list}")
+            return
+        else:
+            await message.answer(data_list)
     for data in data_list:
 
         # Безопасное извлечение даты и времени

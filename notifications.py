@@ -58,7 +58,6 @@ async def notification_loop():
                         u.user_id,
                         f"⏰ Напоминание:\n{task.description}"
                     )
-                    task.reminded = True
 
 
         await asyncio.sleep(60)
