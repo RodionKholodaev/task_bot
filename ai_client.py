@@ -20,6 +20,7 @@ client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=OPENROUTER_API_KEY,
 )
+import asyncio
 
 
 
@@ -183,34 +184,38 @@ async def classify_task(description: str) -> dict:
     - Если есть сомнение — считаем, что задач НЕТ и используем type = "chat".
 
     """
-
     user_msg = description
 
-    try:
-        print("перед получением ответа")
-        # Вызов chat completion через OpenRouter [web:45][web:49][web:76]
-        response = client.chat.completions.create(
-            model="google/gemini-2.0-flash-lite-001",
-            messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": user_msg},
-            ],
-            # JSON-режим: просим модель возвращать JSON-объект [web:81][web:85]
-            response_format={"type": "json_object"},
-            max_tokens=200,
-            temperature=0.1,
-        )
-        print("после получения ответа")
+    error = ""
+    max_retries=3
+    for i in range(max_retries):
+        try:
+            print("перед получением ответа")
+            # Вызов chat completion через OpenRouter [web:45][web:49][web:76]
+            response = client.chat.completions.create(
+                model="google/gemini-2.0-flash-lite-001",
+                messages=[
+                    {"role": "system", "content": system_msg},
+                    {"role": "user", "content": user_msg},
+                ],
+                # JSON-режим: просим модель возвращать JSON-объект [web:81][web:85]
+                response_format={"type": "json_object"},
+                max_tokens=200,
+                temperature=0.1,
+            )
+            print("после получения ответа")
 
-        content: str = response.choices[0].message.content
-        data = json.loads(content)
+            content: str = response.choices[0].message.content
+            data = json.loads(content)
 
-        print(data)
+            print(data)
 
-        return data  
+            return data  
 
-    except Exception as e:
-        print("попал в exception")
-        # На проде лучше логировать ошибку
-        print(f"Error calling OpenRouter: {e}")
-        return f"Error calling OpenRouter: {e}"
+        except Exception as e:
+            print("попал в exception")
+            # На проде лучше логировать ошибку
+            error=e
+            await asyncio.sleep(0.5)
+
+    return error
