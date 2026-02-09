@@ -240,8 +240,9 @@ async def new_task(message: Message):
             f"⏱️ **Напоминание время:** {remind_time}"
         )
 
-        await message.answer(
+        sent_message = await message.answer(
             response_text,
             reply_markup=task_inline(task.id),
             parse_mode="Markdown"
         )
+        save_new_message_id(sent_message.message_id, task.id, sent_message.from_user.id) # тут может быть ошибка с task.id
