@@ -5,7 +5,17 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 
 from keyboards import main_keyboard, category_keyboard, CATEGORY_MAP, READABLE_CATEGORIES, task_inline
-from database import get_user_settings, get_tasks_today, get_tasks_week, get_all_tasks, get_tasks_by_category, upsert_user_settings
+
+from database import (
+    get_user_settings, 
+    get_tasks_today, 
+    get_tasks_week, 
+    get_all_tasks, 
+    get_tasks_by_category, 
+    upsert_user_settings, 
+    save_new_message_id
+    )
+
 from models import Task
 from ai_client import classify_task
 from database import save_task
@@ -44,7 +54,6 @@ async def back(message: Message):
 @router.message(F.text.in_(CATEGORY_MAP))
 async def show_by_category(message: Message):
     """Показать задачи по выбранной категории"""
-    from database import get_session
     
     user_id = message.from_user.id
     category = CATEGORY_MAP[message.text]
@@ -56,10 +65,11 @@ async def show_by_category(message: Message):
         return
 
     for t in tasks:
-        await message.answer(
-            f" {t.deadline_day.strftime("%d-%m-%Y") if t.deadline_day else ""} {t.description}",
+        sent_message = await message.answer(
+            f" {t.deadline_day.strftime('%d-%m-%Y') if t.deadline_day else ''} {t.description}",
             reply_markup=task_inline(t.id)
         )
+        save_new_message_id(sent_message.message_id, t.id, user_id)
 
 
 @router.message(F.text == "📅 Сегодня")
@@ -76,7 +86,8 @@ async def today(message: Message):
 
     for t in tasks:
         deadlinne_time=t.deadline_time if t.deadline_time else ""
-        await message.answer(f"{deadlinne_time} {t.description}", reply_markup=task_inline(t.id))
+        sent_message = await message.answer(f"{deadlinne_time} {t.description}", reply_markup=task_inline(t.id))
+        save_new_message_id(sent_message.message_id, t.id, t.user_id)
 
 
 @router.message(F.text == "📆 Неделя")
@@ -95,10 +106,11 @@ async def week(message: Message):
 
     for t in tasks:
         deadlinne_time=t.deadline_time if t.deadline_time else ""
-        await message.answer(
-            f"{t.deadline_day.strftime("%d-%m-%Y")} {deadlinne_time}: {t.description}",
+        sent_message = await message.answer(
+            f"{t.deadline_day.strftime('%d-%m-%Y')} {deadlinne_time}: {t.description}",
             reply_markup=task_inline(t.id)
         )
+        save_new_message_id(sent_message.message_id, t.id, t.user_id)
 
 
 @router.message(F.text == "📋 Все задачи")
@@ -112,7 +124,8 @@ async def all_tasks(message: Message):
     for t in tasks:
         status = "✅" if t.is_completed else "⏳"
         deadline = t.deadline_day.strftime("%d-%m-%Y") if t.deadline_day else ""
-        await message.answer(f"{status} {deadline} {t.description}", reply_markup=task_inline(t.id))
+        sent_message = await message.answer(f"{status} {deadline} {t.description}", reply_markup=task_inline(t.id))
+        save_new_message_id(sent_message.message_id, t.id, t.user_id)
 
 
 @router.message(F.text == "⚙️ Настройки")
