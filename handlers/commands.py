@@ -5,10 +5,17 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 
 from keyboards import main_keyboard, category_keyboard, CATEGORY_MAP, READABLE_CATEGORIES, task_inline
-from database import get_user_settings, get_tasks_today, get_tasks_week, get_all_tasks, get_tasks_by_category, upsert_user_settings
-from models import Task
-from ai_client import classify_task
-from database import save_task
+from database import (
+    get_user_settings, 
+    get_tasks_today, 
+    get_tasks_week, 
+    get_all_tasks, 
+    get_tasks_by_category, 
+    upsert_user_settings,
+    save_new_message_id,
+    get_task_by_message_id
+    )
+from services.task_service import TaskService
 
 router = Router()
 
@@ -44,7 +51,6 @@ async def back(message: Message):
 @router.message(F.text.in_(CATEGORY_MAP))
 async def show_by_category(message: Message):
     """Показать задачи по выбранной категории"""
-    from database import get_session
     
     user_id = message.from_user.id
     category = CATEGORY_MAP[message.text]
@@ -56,10 +62,11 @@ async def show_by_category(message: Message):
         return
 
     for t in tasks:
-        await message.answer(
-            f" {t.deadline_day.strftime("%d-%m-%Y") if t.deadline_day else ""} {t.description}",
+        sent_message = await message.answer(
+            f" {t.deadline_day.strftime('%d-%m-%Y') if t.deadline_day else ''} {t.description}",
             reply_markup=task_inline(t.id)
         )
+        save_new_message_id(sent_message.message_id, t.id, user_id)
 
 
 @router.message(F.text == "📅 Сегодня")
@@ -76,7 +83,8 @@ async def today(message: Message):
 
     for t in tasks:
         deadlinne_time=t.deadline_time if t.deadline_time else ""
-        await message.answer(f"{deadlinne_time} {t.description}", reply_markup=task_inline(t.id))
+        sent_message = await message.answer(f"{deadlinne_time} {t.description}", reply_markup=task_inline(t.id))
+        save_new_message_id(sent_message.message_id, t.id, t.user_id)
 
 
 @router.message(F.text == "📆 Неделя")
@@ -95,10 +103,11 @@ async def week(message: Message):
 
     for t in tasks:
         deadlinne_time=t.deadline_time if t.deadline_time else ""
-        await message.answer(
-            f"{t.deadline_day.strftime("%d-%m-%Y")} {deadlinne_time}: {t.description}",
+        sent_message = await message.answer(
+            f"{t.deadline_day.strftime('%d-%m-%Y')} {deadlinne_time}: {t.description}",
             reply_markup=task_inline(t.id)
         )
+        save_new_message_id(sent_message.message_id, t.id, t.user_id)
 
 
 @router.message(F.text == "📋 Все задачи")
@@ -112,8 +121,8 @@ async def all_tasks(message: Message):
     for t in tasks:
         status = "✅" if t.is_completed else "⏳"
         deadline = t.deadline_day.strftime("%d-%m-%Y") if t.deadline_day else ""
-        await message.answer(f"{status} {deadline} {t.description}", reply_markup=task_inline(t.id))
-
+        sent_message = await message.answer(f"{status} {deadline} {t.description}", reply_markup=task_inline(t.id))
+        save_new_message_id(sent_message.message_id, t.id, t.user_id)
 
 @router.message(F.text == "⚙️ Настройки")
 async def settings(message: Message):
@@ -135,100 +144,58 @@ async def save_settings(message: Message):
     )
     await message.answer("Настройки сохранены ✅", reply_markup=main_keyboard())
 
+@router.message()
+async def handle_reply(message: Message):
+    """
+    Обработчик для ответов на сообщения бота, чтобы редактировать задачи.
+    """
+    if message.reply_to_message:
+        user_id = message.from_user.id
+        message_id = message.reply_to_message.message_id
+        task = get_task_by_message_id(message_id, user_id)
+
+        if not task:
+            await message.answer("Не удалось найти задачу для редактирования.")
+            return
+
+        # Обновляем задачу через TaskService
+        result = await TaskService.process_task(user_id, message.text, edit=True)
+
+        if "error" in result:
+            await message.answer(result["error"])
+            return
+
+        if "chat_message" in result:
+            await message.answer(result["chat_message"])
+            return
+
+        for task_data in result["tasks"]:
+            sent_message = await message.answer(
+                task_data["response_text"],
+                reply_markup=task_inline(task_data["task"].id),
+                parse_mode="Markdown"
+            )
+            save_new_message_id(sent_message.message_id, task_data["task"].id, task_data["task"].user_id)
 
 @router.message()
 async def new_task(message: Message):
-    """Обработчик добавления новой задачи"""
-    settings = get_user_settings(message.from_user.id)
-    if not settings:
-        await message.answer("Не найден часовой пояс пользователя")
+    """
+    Обработчик добавления новой задачи.
+    """
+    result = TaskService.process_task(message.from_user.id, message.text, edit=False)
+
+    if "error" in result:
+        await message.answer(result["error"])
         return
 
-    # Получаем дату в часовом поясе пользователя
-    user_tz = timezone(timedelta(hours=settings.utc_offset))
-    user_datetime = datetime.now(user_tz)
-    dt_string = user_datetime.strftime("%Y-%m-%d %H:%M")
-
-    # Классифицируем задачу с помощью ИИ
-    if len(message.text) > 500:
-        await message.answer("Слишком длинный текст")
-        return
-    
-    data_message = await classify_task(f"сегодня {dt_string}, {message.text}")
-
-    if isinstance(data_message, str):
-        print(data_message)
-        await message.answer(f"какая-то ошибка с нейросетью. Текст ошибки {data_message}")
+    if "chat_message" in result:
+        await message.answer(result["chat_message"])
         return
 
-    if data_message.get("type")=="chat":
-        await message.answer(data_message.get("message"))
-        return
-    
-    data_list = data_message.get("items")
-    for data in data_list:
-
-        # Безопасное извлечение даты и времени
-        try:
-            deadline_day = datetime.strptime(data["date"], "%Y-%m-%d").date() if data.get("date") else None
-        except (ValueError, TypeError):
-            deadline_day = None
-
-        try:
-            time_str = data.get("time")
-            deadline_time = datetime.strptime(time_str, "%H:%M").time() if time_str else None
-        except (ValueError, TypeError):
-            deadline_time = None
-        
-        try:
-            print("начал работать с remind_date")
-            remind_date_str=data.get("remind_date")
-            remind_date=datetime.strptime(remind_date_str, "%Y-%m-%d").date() if remind_date_str else None
-            print(remind_date)
-        except Exception as e:
-            print(f"попал в exception в remind_date, ошибка: {e}")
-            remind_date=None
-
-        try:
-            remind_time_str=data.get("remind_time")
-            remind_time=datetime.strptime(remind_time_str, "%H:%M").time() if remind_time_str else None
-        except:
-            remind_time=None
-
-        # Создаем объект задачи
-        task = Task(
-            user_id=message.from_user.id,
-            description=data.get("task", message.text),
-            category=data.get("category", "short_30"),
-            deadline_day=deadline_day,
-            deadline_time=deadline_time,
-            remind_time=remind_time,
-            remind_date=remind_date
-        )
-
-        # Сохраняем в БД
-        save_task(task)
-
-        # Формируем красивый ответ
-        cat_text = READABLE_CATEGORIES.get(task.category, task.category)
-        date_text = task.deadline_day.strftime("%d-%m-%Y") if task.deadline_day else None
-        time = task.deadline_time.strftime("%H:%M") if task.deadline_time else None
-        remind_date_str=task.remind_date.strftime("%d-%m-%Y") if task.remind_date else None
-        remind_time = task.remind_time.strftime("%H:%M") if task.remind_time else None
-
-
-        response_text = (
-            f"✅ **Задача добавлена!**\n\n"
-            f"📝 **Что:** {task.description}\n"
-            f"📁 **Категория:** {cat_text}\n"
-            f"📅 **Дата:** {date_text}\n"
-            f"⏰ **Время:** {time}\n"
-            f"🚨 **Напоминание дата:** {remind_date_str}\n"
-            f"⏱️ **Напоминание время:** {remind_time}"
-        )
-
-        await message.answer(
-            response_text,
-            reply_markup=task_inline(task.id),
+    for task_data in result["tasks"]:
+        sent_message = await message.answer(
+            task_data["response_text"],
+            reply_markup=task_inline(task_data["task"].id),
             parse_mode="Markdown"
         )
+        save_new_message_id(sent_message.message_id, task_data["task"].id, task_data["task"].user_id)

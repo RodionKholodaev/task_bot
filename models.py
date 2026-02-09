@@ -22,6 +22,9 @@ class Task(Base):
     remind_date = Column(Date, nullable=True)
     remind_time = Column(Time, nullable=True)
 
+    message_id = Column(Integer, nullable=True)
+
+
 
 class UserSettings(Base):
     """Модель пользователя"""

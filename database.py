@@ -38,6 +38,13 @@ def get_user_settings(user_id: int) -> UserSettings | None:
     finally:
         s.close()
 
+def get_task_by_message_id(message_id: int, user_id: int):
+    s = get_session()
+    try:
+        return s.query(Task).filter_by(message_id = message_id, user_id = user_id).first()
+    finally:
+        s.close()
+
 
 def upsert_user_settings(user_id: int, utc_offset: int, notify_time: time):
     """Обновление/создание настроек пользователя"""
@@ -151,6 +158,18 @@ def delete_task(task_id: int, user_id: int) -> bool:
         if not task:
             return False
         s.delete(task)
+        s.commit()
+        return True
+    finally:
+        s.close()
+
+def save_new_message_id(message_id: int, task_id:int, user_id: int):
+    s = get_session()
+    try:
+        task = s.query(Task).filter_by(id=task_id, user_id=user_id).first()
+        if not task:
+            return False
+        task.message_id = message_id
         s.commit()
         return True
     finally:
