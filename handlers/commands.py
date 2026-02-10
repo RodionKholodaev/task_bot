@@ -69,8 +69,12 @@ async def show_by_category(message: Message):
         return
 
     for t in tasks:
+
+        deadline_day = t.deadline_day.strftime('%d-%m-%Y') if t.deadline_day else ''
+        deadline_time = t.deadline_time.strftime('%H-%M') if t.deadline_time else ''
+
         await message.answer(
-            f" {t.deadline_day.strftime('%d-%m-%Y') if t.deadline_day else ''} {t.description}",
+            f" {deadline_day} {deadline_time} {t.description}",
             reply_markup=task_inline(t.id)
         )
 
@@ -89,7 +93,7 @@ async def today(message: Message):
         return
 
     for t in tasks:
-        deadlinne_time=t.deadline_time if t.deadline_time else ""
+        deadlinne_time=t.deadline_time.strftime('%H-%M') if t.deadline_time else ""
         await message.answer(f"{deadlinne_time} {t.description}", reply_markup=task_inline(t.id))
 
 
@@ -109,9 +113,12 @@ async def week(message: Message):
         return
 
     for t in tasks:
-        deadlinne_time=t.deadline_time if t.deadline_time else ""
+
+        deadline_time=t.deadline_time.strftime('%H-%M') if t.deadline_time else ""
+        deadline_day = t.deadline_day.strftime('%d-%m-%Y') if t.deadline_day else ""
+
         await message.answer(
-            f"{t.deadline_day.strftime('%d-%m-%Y')} {deadlinne_time}: {t.description}",
+            f"{deadline_day} {deadline_time}: {t.description}",
             reply_markup=task_inline(t.id)
         )
 
@@ -126,9 +133,10 @@ async def all_tasks(message: Message):
         return
 
     for t in tasks:
-        status = "✅" if t.is_completed else "⏳"
+        status = "✅" if t.is_completed else "⏳" # вообще всегда будет только "⏳", но вдруг это пригодится
         deadline = t.deadline_day.strftime("%d-%m-%Y") if t.deadline_day else ""
-        await message.answer(f"{status} {deadline} {t.description}", reply_markup=task_inline(t.id))
+        deadline_time=t.deadline_time.strftime('%H-%M') if t.deadline_time else ""
+        await message.answer(f"{status} {deadline} {deadline_time} {t.description}", reply_markup=task_inline(t.id))
 
 
 
