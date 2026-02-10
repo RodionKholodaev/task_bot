@@ -23,6 +23,7 @@ client = OpenAI(
 )
 
 async def ask_llm(description: str, system_msg:str) -> dict:
+    print("попал в ask_llm")
     user_msg = description
 
     error = ""
@@ -223,7 +224,7 @@ async def classify_task(description: str) -> dict:
     return data
     
 
-async def edit_task(information: dict) -> dict:
+async def edit_task(information: dict, date_and_time: str) -> dict:
     """
     получает:
     {
@@ -237,39 +238,38 @@ async def edit_task(information: dict) -> dict:
     }
  
     """
-    system_msg = f"""
-    Ты — ассистент по тайм-менеджменту. Вот полное описание задачи:
-    
+    system_msg = f'''
+    Сегодня {date_and_time}. Ты — ассистент по тайм-менеджменту. Вот полное описание задачи:
     {{
     "type": "tasks",
     "items": [
         {{
-        "category": {information["category"]},
-        "date": {information["date"]}",
-        "time": {information["time"]},
-        "remind_date": {information["remind_date"]},
-        "remind_time": {information["remind_time"]},
-        "task": {information["task"]}
+        "category": "{information["category"]}",
+        "date": "{information["date"]}",
+        "time": "{information["time"]}",
+        "remind_date": "{information["remind_date"]}",
+        "remind_time": "{information["remind_time"]}",
+        "task": "{information["task"]}"
         }}
     ]
     }}
     А вот просьба твоего начальника (ему нужно изменить эту задачу): {information["request"]}
     Пришли новую версию задачи в таком формате:
-    {
+    {{
     "type": "tasks",
     "items": [
-        {
+        {{
         "category": "тип категории",
         "date": "дата выполнения задачи в формате YYYY-MM-DD или пустая строка",
         "time": "время выполнения в формате HH:MM или пустая строка",
         "remind_date": "дата напоминания в формате YYYY-MM-DD или пустая строка",
         "remind_time": "время напоминания в формате HH:MM или пустая строка",
         "task": "краткое описание задачи"
-        }
+        }}
     ]
-    }
-    ОЧЕНЬ ВАЖНО ПРИСЛАТЬ ИМЕННО В ТАКОМ ФОРМАТЕ
-    """
+    }}
+    ОЧЕНЬ ВАЖНО ПРИСЛАТЬ ИМЕННО В ТАКОМ ФОРМАТЕ. УКАЗИВАЙ ПРАВИЛЬНОЕ ВРЕМЯ.
+    '''
     description = "пришли измененную задачу в правильном формате"
     data = await ask_llm(description, system_msg)
     return data

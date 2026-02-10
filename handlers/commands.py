@@ -13,12 +13,15 @@ from database import (
     get_all_tasks, 
     get_tasks_by_category, 
     upsert_user_settings, 
-    save_new_message_id
+    save_new_message_id,
+    get_task_by_message_id
     )
 
 from models import Task
-from ai_client import classify_task
+from ai_client import classify_task, edit_task
 from database import save_task
+
+from services.task_service import task_service
 
 router = Router()
 
@@ -149,24 +152,123 @@ async def save_settings(message: Message):
     await message.answer("Настройки сохранены ✅", reply_markup=main_keyboard())
 
 
+
+@router.message(F.reply_to_message)
+async def handle_reply(message: Message):
+    """
+    Обработчик для ответов на сообщения бота, чтобы редактировать задачи.
+    """
+    if message.reply_to_message:
+        user_id = message.from_user.id
+        dt_string = task_service.get_user_time(user_id)
+
+        if not dt_string:
+            await message.answer("Часовой пояс не найден, добавьте его в настройках")
+
+        user_id = message.from_user.id
+        message_id = message.reply_to_message.message_id
+        task = get_task_by_message_id(message_id, user_id)
+
+        if not task:
+            await message.answer("Не удалось найти задачу для редактирования.")
+            return
+
+        information = {
+            "request": message.text,
+            "category": task.category,
+            "date": task.deadline_day,
+            "time": task.deadline_time,
+            "remind_date": task.remind_date,
+            "remind_time": task.remind_time,
+            "task": task.description
+            }
+
+        result = await edit_task(information, dt_string)
+# ------------------------- нужно добить сохранение и отправку задачи. потом тест и дебагинг
+
+        # Создаем объект задачи
+
+    # {{
+    # "type": "tasks",
+    # "items": [
+    #     {{
+    #     "category": {information["category"]},
+    #     "date": {information["date"]}",
+    #     "time": {information["time"]},
+    #     "remind_date": {information["remind_date"]},
+    #     "remind_time": {information["remind_time"]},
+    #     "task": {information["task"]}
+    #     }}
+    # ]
+    # }}
+
+    #   ans={
+    #         "date": deadline_day,
+    #         "time": deadline_time,
+    #         "remind_date": remind_date,
+    #         "remind_time": remind_time
+    #         }
+        data = result["items"][0]
+
+        data_time = task_service.parse_date(data)
+
+        task = Task(
+            user_id=message.from_user.id,
+            description=data.get("task", message.text),
+            category=data.get("category", "short_30"),
+            deadline_day=data_time["date"],
+            deadline_time=data_time["time"],
+            remind_time=data_time["remind_time"],
+            remind_date=data_time["remind_date"]
+        )
+
+        # Сохраняем в БД
+        save_task(task)
+
+        # Формируем красивый ответ
+        cat_text = READABLE_CATEGORIES.get(task.category, task.category)
+        date_text = task.deadline_day.strftime("%d-%m-%Y") if task.deadline_day else None
+        time = task.deadline_time.strftime("%H:%M") if task.deadline_time else None
+        remind_date_str=task.remind_date.strftime("%d-%m-%Y") if task.remind_date else None
+        remind_time = task.remind_time.strftime("%H:%M") if task.remind_time else None
+
+
+        response_text = (
+            f"✅ **Задача Обновлена!**\n\n"
+            f"📝 **Что:** {task.description}\n"
+            f"📁 **Категория:** {cat_text}\n"
+            f"📅 **Дата:** {date_text}\n"
+            f"⏰ **Время:** {time}\n"
+            f"🚨 **Напоминание дата:** {remind_date_str}\n"
+            f"⏱️ **Напоминание время:** {remind_time}"
+        )
+
+        sent_message = await message.answer(
+            response_text,
+            reply_markup=task_inline(task.id),
+            parse_mode="Markdown"
+        )
+        save_new_message_id(sent_message.message_id, task.id, sent_message.from_user.id) # тут может быть ошибка с task.id
+
+# --------------------------
+
 @router.message()
 async def new_task(message: Message):
     """Обработчик добавления новой задачи"""
-    settings = get_user_settings(message.from_user.id)
-    if not settings:
-        await message.answer("Не найден часовой пояс пользователя")
-        return
+    print(f"поступило сообщение {message.text}")
 
-    # Получаем дату в часовом поясе пользователя
-    user_tz = timezone(timedelta(hours=settings.utc_offset))
-    user_datetime = datetime.now(user_tz)
-    dt_string = user_datetime.strftime("%Y-%m-%d %H:%M")
+    user_id = message.from_user.id
+    dt_string = task_service.get_user_time(user_id)
+
+    if not dt_string:
+        await message.answer("Часовой пояс не найден, добавьте его в настройках")
 
     # Классифицируем задачу с помощью ИИ
     if len(message.text) > 500:
         await message.answer("Слишком длинный текст")
         return
     
+    print("иду в функцию обращения к нейронке для класификации задачи")
     data_message = await classify_task(f"сегодня {dt_string}, {message.text}")
 
     if isinstance(data_message, str):
@@ -220,7 +322,7 @@ async def new_task(message: Message):
         )
 
         # Сохраняем в БД
-        save_task(task)
+        saved_task = save_task(task)
 
         # Формируем красивый ответ
         cat_text = READABLE_CATEGORIES.get(task.category, task.category)
@@ -242,7 +344,7 @@ async def new_task(message: Message):
 
         sent_message = await message.answer(
             response_text,
-            reply_markup=task_inline(task.id),
+            reply_markup=task_inline(saved_task.id),
             parse_mode="Markdown"
         )
-        save_new_message_id(sent_message.message_id, task.id, sent_message.from_user.id) # тут может быть ошибка с task.id
+        save_new_message_id(sent_message.message_id, saved_task.id, message.from_user.id) 
