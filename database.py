@@ -38,12 +38,7 @@ def get_user_settings(user_id: int) -> UserSettings | None:
     finally:
         s.close()
 
-def get_task_by_message_id(message_id: int, user_id: int):
-    s = get_session()
-    try:
-        return s.query(Task).filter_by(message_id = message_id, user_id = user_id).first()
-    finally:
-        s.close()
+
 
 
 def upsert_user_settings(user_id: int, utc_offset: int, notify_time: time):
@@ -126,6 +121,13 @@ def get_tasks_by_category(user_id: int, category: str) -> List[Task]:
     finally:
         s.close()
 
+def get_task_by_id(task_id: int) -> Task:
+    """получение задачи по ее id"""
+    s = get_session()
+    try:
+        return s.query(Task).filter(Task.id==task_id).first()
+    finally:
+        s.close()
 
 def get_all_tasks(user_id: int) -> List[Task]:
     """Получение всех задач пользователя"""
@@ -163,14 +165,4 @@ def delete_task(task_id: int, user_id: int) -> bool:
     finally:
         s.close()
 
-def save_new_message_id(message_id: int, task_id:int, user_id: int):
-    s = get_session()
-    try:
-        task = s.query(Task).filter_by(id=task_id, user_id=user_id).first()
-        if not task:
-            return False
-        task.message_id = message_id
-        s.commit()
-        return True
-    finally:
-        s.close()
+
