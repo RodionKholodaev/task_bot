@@ -73,8 +73,13 @@ async def show_by_category(message: Message):
         deadline_day = t.deadline_day.strftime('%d-%m-%Y') if t.deadline_day else ''
         deadline_time = t.deadline_time.strftime('%H-%M') if t.deadline_time else ''
 
+        answer = (
+            f" {deadline_day} {deadline_time} {t.description}\n"
+            f"ID задачи: {t.id}"
+            )
+
         await message.answer(
-            f" {deadline_day} {deadline_time} {t.description}",
+            answer,
             reply_markup=task_inline(t.id)
         )
 
@@ -88,13 +93,24 @@ async def today(message: Message):
     today = (datetime.utcnow() + timedelta(hours=offset)).date()
 
     tasks = get_tasks_today(message.from_user.id, today)
+    
     if not tasks:
         await message.answer("Сегодня задач нет 🎉")
         return
 
     for t in tasks:
+
         deadlinne_time=t.deadline_time.strftime('%H-%M') if t.deadline_time else ""
-        await message.answer(f"{deadlinne_time} {t.description}", reply_markup=task_inline(t.id))
+        
+        answer = (
+            f"{deadlinne_time} {t.description}\n"
+            f"ID задачи: {t.id}"
+            )
+
+        await message.answer(
+            answer, 
+            reply_markup=task_inline(t.id)
+            )
 
 
 
@@ -117,8 +133,13 @@ async def week(message: Message):
         deadline_time=t.deadline_time.strftime('%H-%M') if t.deadline_time else ""
         deadline_day = t.deadline_day.strftime('%d-%m-%Y') if t.deadline_day else ""
 
+        answer = (
+            f"{deadline_day} {deadline_time}: {t.description}\n"
+            f"ID задачи: {t.id}"
+            )
+        
         await message.answer(
-            f"{deadline_day} {deadline_time}: {t.description}",
+            answer,
             reply_markup=task_inline(t.id)
         )
 
@@ -133,10 +154,21 @@ async def all_tasks(message: Message):
         return
 
     for t in tasks:
+
         status = "✅" if t.is_completed else "⏳" # вообще всегда будет только "⏳", но вдруг это пригодится
+
         deadline = t.deadline_day.strftime("%d-%m-%Y") if t.deadline_day else ""
         deadline_time=t.deadline_time.strftime('%H-%M') if t.deadline_time else ""
-        await message.answer(f"{status} {deadline} {deadline_time} {t.description}", reply_markup=task_inline(t.id))
+
+        answer = (
+            f"{status} {deadline} {deadline_time} {t.description}\n"
+            f"ID задачи: {t.id}"
+            )
+        
+        await message.answer(
+            answer,
+            reply_markup=task_inline(t.id)
+            )
 
 
 
