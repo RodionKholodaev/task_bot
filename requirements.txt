@@ -2,4 +2,3 @@ aiogram
 SQLAlchemy
 python-dotenv
 openai
-re
