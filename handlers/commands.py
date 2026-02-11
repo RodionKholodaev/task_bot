@@ -218,7 +218,6 @@ async def handle_reply(message: Message):
             await message.answer("Не удалось найти задачу для редактирования.")
             return
 
-        delete_task(task_id, user_id)
 
         information = {
             "request": message.text,
@@ -231,30 +230,20 @@ async def handle_reply(message: Message):
             }
 
         result = await edit_task(information, dt_string)
-# ------------------------- нужно добить сохранение и отправку задачи. потом тест и дебагинг
+# ------------------------
+#   НЕТ ПРОВЕРКИ НА БРЕД СО СТОРОНЫ НЕЙРОСЕТИ (видимо нужно использовать pydentic)
+        # отправка сообщения в случае если пользователь отправит какой-то бред
+        if result["type"] == "chat":
+            await message.answer(result["message"])
+            return
+
+# ------------------------- 
+        # удаляем старую задачу
+
+        delete_task(task_id, user_id)
 
         # Создаем объект задачи
 
-    # {{
-    # "type": "tasks",
-    # "items": [
-    #     {{
-    #     "category": {information["category"]},
-    #     "date": {information["date"]}",
-    #     "time": {information["time"]},
-    #     "remind_date": {information["remind_date"]},
-    #     "remind_time": {information["remind_time"]},
-    #     "task": {information["task"]}
-    #     }}
-    # ]
-    # }}
-
-    #   ans={
-    #         "date": deadline_day,
-    #         "time": deadline_time,
-    #         "remind_date": remind_date,
-    #         "remind_time": remind_time
-    #         }
         data = result["items"][0]
 
         data_time = task_service.parse_date(data)
