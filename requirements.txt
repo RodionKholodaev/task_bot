@@ -2,3 +2,4 @@ aiogram
 SQLAlchemy
 python-dotenv
 openai
+apscheduler
