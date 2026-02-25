@@ -1,5 +1,4 @@
 import os
-import time
 from aiogram.types import FSInputFile # нужно для загрузки файла с диска
 from datetime import datetime, timedelta, timezone
 
@@ -244,6 +243,7 @@ async def save_settings(message: Message):
 
 @router.message(F.reply_to_message)
 async def handle_reply(message: Message):
+    import time
     """
     Обработчик для ответов на сообщения бота, чтобы редактировать задачи.
     """
@@ -254,8 +254,7 @@ async def handle_reply(message: Message):
     user_id = message.from_user.id
     file_path_in_db = None
 
-    if message.document:
-
+    if message.document or message.photo:
 
         # создаем путь к папке пользователя: uploads/12345678/
         user_upload_dir = os.path.join("uploads", str(user_id))
@@ -263,14 +262,19 @@ async def handle_reply(message: Message):
         # создаем папку, если она еще не существует (exist_ok=True не выдаст ошибку, если папка уже есть)
         os.makedirs(user_upload_dir, exist_ok=True)
 
-        # формируем уникальное имя файла, чтобы не было конфликтов (timestamp + оригинальное имя)
-        file_name = f"{int(time.time())}_{message.document.file_name}"
+        # формируем уникальное имя файла
+        if message.document:
+            file_id = message.document.file_id
+            file_name = f"{int(time.time())}_{message.document.file_name}"
+        else:
+            file_id = message.photo[-1].file_id
+            file_name = f"{int(time.time())}_photo.jpg"
         
         # полный путь для сохранения
         destination = os.path.join(user_upload_dir, file_name)
 
         # скачиваем файл
-        file = await message.bot.get_file(message.document.file_id)
+        file = await message.bot.get_file(file_id)
         await message.bot.download_file(file.file_path, destination)
         
         # этот путь мы запишем в базу данных
@@ -293,7 +297,7 @@ async def handle_reply(message: Message):
         await message.answer("Не удалось найти задачу для редактирования.")
         return
     
-    if message.document and task.file_path:
+    if (message.document and task.file_path) or (message.photo and task.file_path):
         try:
             os.remove(task.file_path)
         except Exception as e:
@@ -377,8 +381,9 @@ async def handle_reply(message: Message):
 
 @router.message()
 async def new_task(message: Message):
+    import time
     """Обработчик добавления новой задачи"""
-    text = message.text or message.caption 
+    text = message.text or message.caption or ""
     print(f"поступило сообщение {text}")
 
     user_id = message.from_user.id
@@ -391,7 +396,8 @@ async def new_task(message: Message):
     user_id = message.from_user.id
     file_path_in_db = None
 
-    if message.document:
+    if message.document or message.photo:
+        print("понял что с сообщении есть файл")
         # создаем путь к папке пользователя: uploads/12345678/
         user_upload_dir = os.path.join("uploads", str(user_id))
         
@@ -399,17 +405,26 @@ async def new_task(message: Message):
         os.makedirs(user_upload_dir, exist_ok=True)
 
         # формируем уникальное имя файла, чтобы не было конфликтов (timestamp + оригинальное имя)
-        file_name = f"{int(time.time())}_{message.document.file_name}"
+        if message.document:
+            file_id = message.document.file_id
+            file_name = f"{int(time.time())}_{message.document.file_name}"
+        else:
+            file_id = message.photo[-1].file_id
+            file_name = f"{int(time.time())}_photo.jpg"
+
         
         # полный путь для сохранения
         destination = os.path.join(user_upload_dir, file_name)
 
         # скачиваем файл
-        file = await message.bot.get_file(message.document.file_id)
+        print("начинаем скачивать файл")
+
+        file = await message.bot.get_file(file_id)
         await message.bot.download_file(file.file_path, destination)
-        
+        print("заканчиваем скачивание")
         # этот путь мы запишем в базу данных
         file_path_in_db = destination
+        print(f"место файла: {destination}")
 
 
     if len(text) > 500:
@@ -493,7 +508,7 @@ async def new_task(message: Message):
             f"🆔 ID задачи: {task.id}"
         )
 
- 
+#  TODO сделать вывод файла при сохранении задачи
         await message.answer(
             response_text,
             reply_markup=task_inline(task.id),

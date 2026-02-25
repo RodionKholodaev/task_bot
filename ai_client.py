@@ -41,7 +41,7 @@ async def ask_llm(description: str, system_msg:str) -> dict:
                 # JSON-режим: просим модель возвращать JSON-объект [web:81][web:85]
                 response_format={"type": "json_object"},
                 max_tokens=200,
-                temperature=0.1,
+                temperature=None,
             )
             print("после получения ответа")
 
