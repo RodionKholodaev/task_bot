@@ -1,14 +1,11 @@
 # ai_client.py
-import os
 import json
 import asyncio
-from typing import Literal, Optional
 
 from openai import OpenAI
 
 from config import OPENROUTER_API_KEY
 
-from datetime import datetime, timezone, timedelta
 
 # загружаем переменные из .env в систему, чтобы потом можно было достать
 
