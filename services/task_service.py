@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from database import get_user_settings
-class task_service():
+class TaskService:
     @staticmethod
     def get_user_time(user_id : int) -> str | None:
         settings = get_user_settings(user_id)

@@ -21,8 +21,8 @@ from models import Task
 from ai_client import classify_task, edit_task
 from database import save_task
 
-from services.task_service import task_service
-from services.message_service import message_service
+from services.task_service import TaskService
+from services.message_service import MessageService
 
 router = Router()
 
@@ -202,7 +202,7 @@ async def handle_reply(message: Message):
     """
     if message.reply_to_message:
         user_id = message.from_user.id
-        dt_string = task_service.get_user_time(user_id)
+        dt_string = TaskService.get_user_time(user_id)
 
         if not dt_string:
             await message.answer("Часовой пояс не найден, добавьте его в настройках")
@@ -210,7 +210,7 @@ async def handle_reply(message: Message):
         user_id = message.from_user.id
         task_text = message.reply_to_message.text
 
-        task_id = message_service.extract_task_id(task_text)
+        task_id = MessageService.extract_task_id(task_text)
 
         task = get_task_by_id(task_id)
 
@@ -246,7 +246,7 @@ async def handle_reply(message: Message):
 
         data = result["items"][0]
 
-        data_time = task_service.parse_date(data)
+        data_time = TaskService.parse_date(data)
 
         task = Task(
             user_id=message.from_user.id,
@@ -301,7 +301,7 @@ async def new_task(message: Message):
     print(f"поступило сообщение {message.text}")
 
     user_id = message.from_user.id
-    dt_string = task_service.get_user_time(user_id)
+    dt_string = TaskService.get_user_time(user_id)
 
     if not dt_string:
         await message.answer("Часовой пояс не найден, добавьте его в настройках")

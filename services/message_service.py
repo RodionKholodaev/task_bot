@@ -1,6 +1,6 @@
 import re
 
-class message_service():
+class MessageService:
     @staticmethod
     def extract_task_id(text: str) -> int | None:
         match = re.search(r"ID задачи:\s*(\d+)", text)
