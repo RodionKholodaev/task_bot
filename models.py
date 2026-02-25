@@ -22,6 +22,8 @@ class Task(Base):
     remind_date = Column(Date, nullable=True)
     remind_time = Column(Time, nullable=True)
 
+    file_path = Column(String(255), nullable = True)
+
 
 
 class UserSettings(Base):

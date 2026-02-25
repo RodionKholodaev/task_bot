@@ -1,3 +1,6 @@
+import os
+import time
+from aiogram.types import FSInputFile # нужно для загрузки файла с диска
 from datetime import datetime, timedelta, timezone
 
 from aiogram import Router, F
@@ -79,10 +82,21 @@ async def show_by_category(message: Message):
             f"ID задачи: {t.id}"
             )
 
-        await message.answer(
-            answer,
-            reply_markup=task_inline(t.id)
-        )
+        # проверяем, существует ли файл по записанному пути
+        if t.file_path and os.path.exists(t.file_path):
+            await message.answer_document(
+                document=FSInputFile(t.file_path),
+                caption=answer, # Текст задачи уходит в подпись к файлу
+                reply_markup=task_inline(t.id),
+                parse_mode="Markdown"
+            )
+        else:
+            # если файла нет, отправляем просто текст
+            await message.answer(
+                answer,
+                reply_markup=task_inline(t.id),
+                parse_mode="Markdown"
+            )
 
 
 
@@ -108,9 +122,20 @@ async def today(message: Message):
             f"ID задачи: {t.id}"
             )
 
-        await message.answer(
-            answer, 
-            reply_markup=task_inline(t.id)
+        # проверяем, существует ли файл по записанному пути
+        if t.file_path and os.path.exists(t.file_path):
+            await message.answer_document(
+                document=FSInputFile(t.file_path),
+                caption=answer, # Текст задачи уходит в подпись к файлу
+                reply_markup=task_inline(t.id),
+                parse_mode="Markdown"
+            )
+        else:
+            # если файла нет, отправляем просто текст
+            await message.answer(
+                answer,
+                reply_markup=task_inline(t.id),
+                parse_mode="Markdown"
             )
 
 
@@ -139,10 +164,21 @@ async def week(message: Message):
             f"ID задачи: {t.id}"
             )
         
-        await message.answer(
-            answer,
-            reply_markup=task_inline(t.id)
-        )
+        # проверяем, существует ли файл по записанному пути
+        if t.file_path and os.path.exists(t.file_path):
+            await message.answer_document(
+                document=FSInputFile(t.file_path),
+                caption=answer, # Текст задачи уходит в подпись к файлу
+                reply_markup=task_inline(t.id),
+                parse_mode="Markdown"
+            )
+        else:
+            # если файла нет, отправляем просто текст
+            await message.answer(
+                answer,
+                reply_markup=task_inline(t.id),
+                parse_mode="Markdown"
+            )
 
 
 
@@ -166,9 +202,20 @@ async def all_tasks(message: Message):
             f"ID задачи: {t.id}"
             )
         
-        await message.answer(
-            answer,
-            reply_markup=task_inline(t.id)
+        # проверяем, существует ли файл по записанному пути
+        if t.file_path and os.path.exists(t.file_path):
+            await message.answer_document(
+                document=FSInputFile(t.file_path),
+                caption=answer, # Текст задачи уходит в подпись к файлу
+                reply_markup=task_inline(t.id),
+                parse_mode="Markdown"
+            )
+        else:
+            # если файла нет, отправляем просто текст
+            await message.answer(
+                answer,
+                reply_markup=task_inline(t.id),
+                parse_mode="Markdown"
             )
 
 
@@ -200,105 +247,139 @@ async def handle_reply(message: Message):
     """
     Обработчик для ответов на сообщения бота, чтобы редактировать задачи.
     """
-    if message.reply_to_message:
-        user_id = message.from_user.id
-        dt_string = task_service.get_user_time(user_id)
+    # получение текста
+    text = message.text or message.caption or ""
 
-        if not dt_string:
-            await message.answer("Часовой пояс не найден, добавьте его в настройках")
+    # обработка файла
+    user_id = message.from_user.id
+    file_path_in_db = None
 
-        user_id = message.from_user.id
-        task_text = message.reply_to_message.text
-
-        task_id = message_service.extract_task_id(task_text)
-
-        task = get_task_by_id(task_id)
-
-        if not task:
-            await message.answer("Не удалось найти задачу для редактирования.")
-            return
+    if message.document:
 
 
-        information = {
-            "request": message.text,
-            "category": task.category,
-            "date": task.deadline_day,
-            "time": task.deadline_time,
-            "remind_date": task.remind_date,
-            "remind_time": task.remind_time,
-            "task": task.description
-            }
+        # создаем путь к папке пользователя: uploads/12345678/
+        user_upload_dir = os.path.join("uploads", str(user_id))
+        
+        # создаем папку, если она еще не существует (exist_ok=True не выдаст ошибку, если папка уже есть)
+        os.makedirs(user_upload_dir, exist_ok=True)
 
-        result = await edit_task(information, dt_string)
-# ------------------------
-#   НЕТ ПРОВЕРКИ НА БРЕД СО СТОРОНЫ НЕЙРОСЕТИ (видимо нужно использовать pydentic)
-        # отправка сообщения в случае если пользователь отправит какой-то бред
-        if result["type"] == "chat":
-            await message.answer(result["message"])
-            return
+        # формируем уникальное имя файла, чтобы не было конфликтов (timestamp + оригинальное имя)
+        file_name = f"{int(time.time())}_{message.document.file_name}"
+        
+        # полный путь для сохранения
+        destination = os.path.join(user_upload_dir, file_name)
 
-# ------------------------- 
-        # удаляем старую задачу
+        # скачиваем файл
+        file = await message.bot.get_file(message.document.file_id)
+        await message.bot.download_file(file.file_path, destination)
+        
+        # этот путь мы запишем в базу данных
+        file_path_in_db = destination
 
-        delete_task(task_id, user_id)
+    dt_string = task_service.get_user_time(user_id)
 
-        # Создаем объект задачи
+    if not dt_string:
+        await message.answer("Часовой пояс не найден, добавьте его в настройках")
 
-        data = result["items"][0]
+    user_id = message.from_user.id
+    task_text = message.reply_to_message.text or message.reply_to_message.caption 
 
-        data_time = task_service.parse_date(data)
+    task_id = message_service.extract_task_id(task_text)
 
-        task = Task(
-            user_id=message.from_user.id,
-            description=data.get("task", message.text),
-            category=data.get("category", "short_30"),
-            deadline_day=data_time["date"],
-            deadline_time=data_time["time"],
-            remind_time=data_time["remind_time"],
-            remind_date=data_time["remind_date"]
-        )
-
-        # Сохраняем в БД
-        save_task(task)
-
-        # Формируем красивый ответ
-        cat_text = READABLE_CATEGORIES.get(task.category, task.category)
-        date_text = task.deadline_day.strftime("%d-%m-%Y") if task.deadline_day else None
-        time = task.deadline_time.strftime("%H:%M") if task.deadline_time else None
-        remind_date_str=task.remind_date.strftime("%d-%m-%Y") if task.remind_date else None
-        remind_time = task.remind_time.strftime("%H:%M") if task.remind_time else None
+    task = get_task_by_id(task_id)
 
 
-        response_text = (
-            f"✅ **Задача Обновлена!**\n\n"
-            f"📝 **Что:** {task.description}\n"
-            f"📁 **Категория:** {cat_text}\n"
-            f"📅 **Дата:** {date_text}\n"
-            f"⏰ **Время:** {time}\n"
-            f"🚨 **Напоминание дата:** {remind_date_str}\n"
-            f"⏱️ **Напоминание время:** {remind_time}\n"
-            f"🆔 ID задачи: {task.id}"
-        )
-
-        await message.answer(
-            response_text,
-            reply_markup=task_inline(task.id),
-            parse_mode="Markdown"
-        )
-
+    if not task:
+        await message.answer("Не удалось найти задачу для редактирования.")
+        return
+    
+    if message.document and task.file_path:
         try:
-            await message.reply_to_message.delete()
-        except:
-            print(f"не удалось удалить сообщение c id = {task_id}")
+            os.remove(task.file_path)
+        except Exception as e:
+            print(f"ошибка удаления файла {e}")
+
+
+
+    if not file_path_in_db:
+        file_path_in_db = task.file_path
+
+
+    information = {
+        "request": text,
+        "category": task.category,
+        "date": task.deadline_day,
+        "time": task.deadline_time,
+        "remind_date": task.remind_date,
+        "remind_time": task.remind_time,
+        "task": task.description
+        }
+
+    result = await edit_task(information, dt_string)
+
+    # удаляем старую задачу
+    delete_task(task_id, user_id)
+
+    # Создаем объект задачи
+
+    data = result["items"][0]
+
+    data_time = task_service.parse_date(data)
+
+    task = Task(
+        user_id=message.from_user.id,
+        description=data.get("task"),
+        category=data.get("category", "short_30"),
+        deadline_day=data_time["date"],
+        deadline_time=data_time["time"],
+        remind_time=data_time["remind_time"],
+        remind_date=data_time["remind_date"],
+        file_path = file_path_in_db
+    )
+
+    # Сохраняем в БД
+    save_task(task)
+
+    # Формируем красивый ответ
+    cat_text = READABLE_CATEGORIES.get(task.category, task.category)
+    date_text = task.deadline_day.strftime("%d-%m-%Y") if task.deadline_day else None
+    time = task.deadline_time.strftime("%H:%M") if task.deadline_time else None
+    remind_date_str=task.remind_date.strftime("%d-%m-%Y") if task.remind_date else None
+    remind_time = task.remind_time.strftime("%H:%M") if task.remind_time else None
+
+
+    response_text = (
+        f"✅ **Задача Обновлена!**\n\n"
+        f"📝 **Что:** {task.description}\n"
+        f"📁 **Категория:** {cat_text}\n"
+        f"📅 **Дата:** {date_text}\n"
+        f"⏰ **Время:** {time}\n"
+        f"🚨 **Напоминание дата:** {remind_date_str}\n"
+        f"⏱️ **Напоминание время:** {remind_time}\n"
+        f"🆔 ID задачи: {task.id}"
+    )
+
+    await message.answer(
+        response_text,
+        reply_markup=task_inline(task.id),
+        parse_mode="Markdown"
+    )
+
+    try:
+        await message.reply_to_message.delete()
+    except:
+        print(f"не удалось удалить сообщение c id = {task_id}")
 
         
 
 # --------------------------
 
+
 @router.message()
 async def new_task(message: Message):
     """Обработчик добавления новой задачи"""
-    print(f"поступило сообщение {message.text}")
+    text = message.text or message.caption 
+    print(f"поступило сообщение {text}")
 
     user_id = message.from_user.id
     dt_string = task_service.get_user_time(user_id)
@@ -306,13 +387,37 @@ async def new_task(message: Message):
     if not dt_string:
         await message.answer("Часовой пояс не найден, добавьте его в настройках")
 
-    # Классифицируем задачу с помощью ИИ
-    if len(message.text) > 500:
+    # обработка файла
+    user_id = message.from_user.id
+    file_path_in_db = None
+
+    if message.document:
+        # создаем путь к папке пользователя: uploads/12345678/
+        user_upload_dir = os.path.join("uploads", str(user_id))
+        
+        # создаем папку, если она еще не существует (exist_ok=True не выдаст ошибку, если папка уже есть)
+        os.makedirs(user_upload_dir, exist_ok=True)
+
+        # формируем уникальное имя файла, чтобы не было конфликтов (timestamp + оригинальное имя)
+        file_name = f"{int(time.time())}_{message.document.file_name}"
+        
+        # полный путь для сохранения
+        destination = os.path.join(user_upload_dir, file_name)
+
+        # скачиваем файл
+        file = await message.bot.get_file(message.document.file_id)
+        await message.bot.download_file(file.file_path, destination)
+        
+        # этот путь мы запишем в базу данных
+        file_path_in_db = destination
+
+
+    if len(text) > 500:
         await message.answer("Слишком длинный текст")
         return
     
     print("иду в функцию обращения к нейронке для класификации задачи")
-    data_message = await classify_task(f"сегодня {dt_string}, {message.text}")
+    data_message = await classify_task(f"сегодня {dt_string}, {text}")
 
     if isinstance(data_message, str):
         print(data_message)
@@ -356,12 +461,13 @@ async def new_task(message: Message):
         # Создаем объект задачи
         task = Task(
             user_id=message.from_user.id,
-            description=data.get("task", message.text),
+            description=data.get("task", text),
             category=data.get("category", "short_30"),
             deadline_day=deadline_day,
             deadline_time=deadline_time,
             remind_time=remind_time,
-            remind_date=remind_date
+            remind_date=remind_date,
+            file_path = file_path_in_db
         )
 
         # Сохраняем в БД
