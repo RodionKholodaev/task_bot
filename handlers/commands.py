@@ -307,7 +307,7 @@ async def new_task(message: Message):
         await message.answer("Часовой пояс не найден, добавьте его в настройках")
 
     # Классифицируем задачу с помощью ИИ
-    if len(message.text) > 500:
+    if len(message.text) > 6*500:
         await message.answer("Слишком длинный текст")
         return
     
