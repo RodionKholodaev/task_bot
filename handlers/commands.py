@@ -312,6 +312,7 @@ async def new_task(message: Message):
         return
     
     print("иду в функцию обращения к нейронке для класификации задачи")
+    print(f"передаю в функцию время и дату {dt_string}")
     data_message = await classify_task(f"сегодня {dt_string}, {message.text}")
 
     if isinstance(data_message, str):

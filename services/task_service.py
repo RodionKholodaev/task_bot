@@ -10,7 +10,8 @@ class TaskService:
             # Получаем дату в часовом поясе пользователя
             user_tz = timezone(timedelta(hours=settings.utc_offset))
             user_datetime = datetime.now(user_tz)
-            dt_string = user_datetime.strftime("%Y-%m-%d %H:%M")
+            dt_string = user_datetime.strftime("%A, %Y-%m-%d %H:%M") # добавляем и день недели
+        
             return dt_string
 
     @staticmethod

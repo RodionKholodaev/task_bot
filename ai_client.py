@@ -193,31 +193,14 @@ async def edit_task(information: dict, date_and_time: str) -> dict:
     "remind_time": "время напоминания в формате HH:MM или пустая строка",
     "task": "краткое описание задачи"
     }
- 
-    ВОЗМОЖНЫЕ ТИПЫ ОТВЕТА:
-
-    1) "type": "tasks" — если в тексте есть одна или несколько задач.
-
     """
     system_msg = f'''
-    Сегодня {date_and_time}. Ты — ассистент по тайм-менеджменту. Вот полное описание задачи:
-    {{
-    "type": "tasks",
-    "items": [
-        {{
-        "category": "{information["category"]}",
-        "date": "{information["date"]}",
-        "time": "{information["time"]}",
-        "remind_date": "{information["remind_date"]}",
-        "remind_time": "{information["remind_time"]}",
-        "task": "{information["task"]}"
-        }}
-    ]
-    }}
-    А вот просьба твоего начальника (ему нужно изменить эту задачу): Сегодня {date_and_time}, {information["request"]}
+    Ты — ассистент по тайм-менеджменту. Твоя задача - получить задачу и коментарий к ней,
+    понять коментарий и если нужно изменить задачу и прислать ее в нужном формате.
+
+    
     Пришли новую версию задачи в таком формате:
 
-    Если "type": "tasks" (то есть если пользователь написал текст, который относится к задаче)
     {{
     "type": "tasks",
     "items": [
@@ -232,6 +215,14 @@ async def edit_task(information: dict, date_and_time: str) -> dict:
     ]
     }}
 
+    КАТЕГОРИИ ЗАДАЧ (используй ТОЛЬКО их):
+
+    - short_5 — до 5 минут.
+    - short_30 — от 5 до 30 минут.
+    - short_120 — от 30 минут до 2 часов.
+    - long — более 2 часов или сложные проекты.
+
+    Допустимые значения: "short_5", "short_30", "short_120", "long".
 
     "Перенеси на послезавтра" означает +2 дня к {date_and_time}
     "Перенеси на завтра" означает +1 дня к {date_and_time}
@@ -239,8 +230,184 @@ async def edit_task(information: dict, date_and_time: str) -> dict:
 
     ОЧЕНЬ ВАЖНО ПРИСЛАТЬ ИМЕННО В ТАКОМ ФОРМАТЕ. УКАЗИВАЙ ПРАВИЛЬНОЕ ВРЕМЯ.
     ЕСЛИ НАЧАЛЬНИК НЕ ГОВОРИТ ЧТО-ТО МЕНЯТЬ, НЕ МЕНЯЙ НИЧЕГО, ДАЖЕ ВРЕМЯ И ДАТУ, ПРОСТО ВСЕ ПЕРЕПИШИ В ДРУГОЙ ФОРМАТ.
-    
+
+    Примеры:
+    пример 1 (назначить задачу на сегодня):
+    Сегодня Friday, 2026-02-27 22:19. Вот моя задача:
+    {{
+    "type": "tasks",
+    "items": [
+        {{
+        "category": "short_30",
+        "date": "",
+        "time": "",
+        "remind_date": "",
+        "remind_time": "",
+        "task": "Сходить в пятерочку"
+        }}
+    ]
+    }}
+    Вот моя просьба: Сегодня
+    Твой ответ:
+    {{
+    "type": "tasks",
+    "items": [
+        {{
+        "category": "short_30",
+        "date": "2026-02-27",
+        "time": "",
+        "remind_date": "",
+        "remind_time": "",
+        "task": "Сходить в пятерочку"
+        }}
+    ]
+    }}
+    пример 2 (посмотреть задачу):
+    Сегодня Friday, 2026-02-27 22:19. Вот моя задача:
+    {{
+    "type": "tasks",
+    "items": [
+        {{
+        "category": "short_30",
+        "date": "",
+        "time": "",
+        "remind_date": "",
+        "remind_time": "",
+        "task": "Сходить в пятерочку"
+        }}
+    ]
+    }}
+    Вот моя просьба: покажи
+    Твой ответ:
+    {{
+    "type": "tasks",
+    "items": [
+        {{
+        "category": "short_30",
+        "date": "",
+        "time": "",
+        "remind_date": "",
+        "remind_time": "",
+        "task": "Сходить в пятерочку"
+        }}
+    ]
+    }}
+
+    пример 3 (изменить задачу):
+    Сегодня Friday, 2026-02-27 22:19. Вот моя задача:
+    {{
+    "type": "tasks",
+    "items": [
+        {{
+        "category": "short_30",
+        "date": "",
+        "time": "",
+        "remind_date": "",
+        "remind_time": "",
+        "task": "Сходить в пятерочку"
+        }}
+    ]
+    }}
+    Вот моя просьба: я закажу онлайн напомни через часик
+
+    Твой ответ:
+    {{
+    "type": "tasks",
+    "items": [
+        {{
+        "category": "short_5",
+        "date": "2026-02-27",
+        "time": "23:19",
+        "remind_date": "2026-02-27",
+        "remind_time": "23:19",
+        "task": "Заказать еду из пятерочки"
+        }}
+    ]
+    }}
+
+    пример 4 (перенос задачи):
+    Сегодня Friday, 2026-02-27 22:19. Вот моя задача:
+    {{
+    "type": "tasks",
+    "items": [
+        {{
+        "category": "short_120",
+        "date": "",
+        "time": "",
+        "remind_date": "",
+        "remind_time": "",
+        "task": "Сделать матан"
+        }}
+    ]
+    }}
+    Вот моя просьба: Перенеси на воскресенье
+
+    Твой ответ:
+    {{
+    "type": "tasks",
+    "items": [
+        {{
+        "category": "short_120",
+        "date": "2026-03-01",
+        "time": "",
+        "remind_date": "",
+        "remind_time": "",
+        "task": "Сделать матан"
+        }}
+    ]
+    }}
+
+    пример 4 (изменить сложность):
+    Сегодня Friday, 2026-02-27 22:19. Вот моя задача:
+    {{
+    "type": "tasks",
+    "items": [
+        {{
+        "category": "short_120",
+        "date": "",
+        "time": "",
+        "remind_date": "",
+        "remind_time": "",
+        "task": "Выгрузить новую версию бота на сервер"
+        }}
+    ]
+    }}
+    Вот моя просьба: это проще
+
+    Твой ответ:
+    {{
+    "type": "tasks",
+    "items": [
+        {{
+        "category": "short_30",
+        "date": "",
+        "time": "",
+        "remind_date": "",
+        "remind_time": "",
+        "task": "Выгрузить новую версию бота на сервер"
+        }}
+    ]
+    }}
+
+    НЕ МЕНЯЙ ПОЛЯ КОТОРЫЕ ПОЛЬЗОВАТЕЛЬ НЕ ПРОСИТ ИЗМЕНИТЬ!
     '''
-    description = "пришли измененную задачу в правильном формате"
+    
+    description = f'''
+    Сегодня {date_and_time}. Вот моя задача:
+    {{
+    "type": "tasks",
+    "items": [
+        {{
+        "category": "{information["category"]}",
+        "date": "{information["date"]}",
+        "time": "{information["time"]}",
+        "remind_date": "{information["remind_date"]}",
+        "remind_time": "{information["remind_time"]}",
+        "task": "{information["task"]}"
+        }}
+    ]
+    }}
+    Вот моя просьба: {information["request"]}
+    '''
     data = await ask_llm(description, system_msg)
     return data
