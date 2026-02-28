@@ -22,6 +22,28 @@ class Task(Base):
     remind_date = Column(Date, nullable=True)
     remind_time = Column(Time, nullable=True)
 
+class ShoppingItem(Base):
+    """Модель для конкретного товара в списке покупок"""
+    __tablename__ = "shopping_items"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, index=True, nullable=False)
+    
+    # Суть покупки
+    item = Column(String(255), nullable=False)
+    category = Column(String(100), nullable=True) # "Продукты", "Аптека" и т.д.
+    
+    # Количественные характеристики
+    amount = Column(Float, default=1.0)
+    unit = Column(String(20), default="шт") # кг, мл, упак.
+    
+    # Состояние
+    is_bought = Column(Boolean, default=False)
+    
+    # Таймстампы
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 
 
 class UserSettings(Base):

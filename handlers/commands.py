@@ -14,12 +14,13 @@ from database import (
     get_tasks_by_category, 
     upsert_user_settings, 
     get_task_by_id,
-    delete_task
+    delete_task,
+    save_task,
+    save_shopping_item
     )
 
-from models import Task
-from ai_client import classify_task, edit_task
-from database import save_task
+from models import Task, ShoppingItem
+from ai_client import parse_text, edit_task
 
 from services.task_service import TaskService
 from services.message_service import MessageService
@@ -306,91 +307,109 @@ async def new_task(message: Message):
     if not dt_string:
         await message.answer("Часовой пояс не найден, добавьте его в настройках")
 
-    # Классифицируем задачу с помощью ИИ
+    # проверка на длину (500 слов)
     if len(message.text) > 6*500:
         await message.answer("Слишком длинный текст")
         return
     
     print("иду в функцию обращения к нейронке для класификации задачи")
     print(f"передаю в функцию время и дату {dt_string}")
-    data_message = await classify_task(f"сегодня {dt_string}, {message.text}")
+    data_message = await parse_text(f"сегодня {dt_string}, {message.text}")
 
     if isinstance(data_message, str):
         print(data_message)
         await message.answer(f"какая-то ошибка с нейросетью. Текст ошибки {data_message}")
         return
 
-    if data_message.get("type")=="chat":
-        await message.answer(data_message.get("message"))
-        return
     
     data_list = data_message.get("items")
-    for data in data_list:
+    if data_message["type"]=="tasks":
+        for data in data_list:
 
-        # Безопасное извлечение даты и времени
-        try:
-            deadline_day = datetime.strptime(data["date"], "%Y-%m-%d").date() if data.get("date") else None
-        except (ValueError, TypeError):
-            deadline_day = None
+            data_time = TaskService.parse_date(data)
 
-        try:
-            time_str = data.get("time")
-            deadline_time = datetime.strptime(time_str, "%H:%M").time() if time_str else None
-        except (ValueError, TypeError):
-            deadline_time = None
-        
-        try:
-            print("начал работать с remind_date")
-            remind_date_str=data.get("remind_date")
-            remind_date=datetime.strptime(remind_date_str, "%Y-%m-%d").date() if remind_date_str else None
-            print(remind_date)
-        except Exception as e:
-            print(f"попал в exception в remind_date, ошибка: {e}")
-            remind_date=None
+            # Создаем объект задачи
+            task = Task(
+                user_id=message.from_user.id,
+                description=data.get("task", message.text),
+                category=data.get("category", "short_30"),
+                deadline_day=data_time["date"],
+                deadline_time=data_time["time"],
+                remind_time=data_time["remind_time"],
+                remind_date=data_time["remind_date"]
+            )
 
-        try:
-            remind_time_str=data.get("remind_time")
-            remind_time=datetime.strptime(remind_time_str, "%H:%M").time() if remind_time_str else None
-        except:
-            remind_time=None
+            # Сохраняем в БД
+            save_task(task)
 
-        # Создаем объект задачи
-        task = Task(
-            user_id=message.from_user.id,
-            description=data.get("task", message.text),
-            category=data.get("category", "short_30"),
-            deadline_day=deadline_day,
-            deadline_time=deadline_time,
-            remind_time=remind_time,
-            remind_date=remind_date
-        )
-
-        # Сохраняем в БД
-        save_task(task)
-
-        # Формируем красивый ответ
-        cat_text = READABLE_CATEGORIES.get(task.category, task.category)
-        date_text = task.deadline_day.strftime("%d-%m-%Y") if task.deadline_day else None
-        time = task.deadline_time.strftime("%H:%M") if task.deadline_time else None
-        remind_date_str=task.remind_date.strftime("%d-%m-%Y") if task.remind_date else None
-        remind_time = task.remind_time.strftime("%H:%M") if task.remind_time else None
-        
+            # Формируем красивый ответ (нужно делать не тут)
+            cat_text = READABLE_CATEGORIES.get(task.category, task.category)
+            date_text = task.deadline_day.strftime("%d-%m-%Y") if task.deadline_day else None
+            time = task.deadline_time.strftime("%H:%M") if task.deadline_time else None
+            remind_date_str=task.remind_date.strftime("%d-%m-%Y") if task.remind_date else None
+            remind_time = task.remind_time.strftime("%H:%M") if task.remind_time else None
+            
 
 
-        response_text = (
-            f"✅ **Задача добавлена!**\n\n"
-            f"📝 **Что:** {task.description}\n"
-            f"📁 **Категория:** {cat_text}\n"
-            f"📅 **Дата:** {date_text}\n"
-            f"⏰ **Время:** {time}\n"
-            f"🚨 **Напоминание дата:** {remind_date_str}\n"
-            f"⏱️ **Напоминание время:** {remind_time}\n"
-            f"🆔 ID задачи: {task.id}"
-        )
+            response_text = (
+                f"✅ **Задача добавлена!**\n\n"
+                f"📝 **Что:** {task.description}\n"
+                f"📁 **Категория:** {cat_text}\n"
+                f"📅 **Дата:** {date_text}\n"
+                f"⏰ **Время:** {time}\n"
+                f"🚨 **Напоминание дата:** {remind_date_str}\n"
+                f"⏱️ **Напоминание время:** {remind_time}\n"
+                f"🆔 ID задачи: {task.id}"
+            )
 
  
-        await message.answer(
-            response_text,
-            reply_markup=task_inline(task.id),
-            parse_mode="Markdown"
-        )
+            await message.answer(
+                response_text,
+                reply_markup=task_inline(task.id),
+                parse_mode="Markdown"
+            )
+
+    if data_message["type"]=="shopping_list":
+        for data in data_list:
+
+            shopping_item = ShoppingItem(
+                user_id=message.from_user.id,
+                item = data_list["item"],
+                category = data_list["category"],
+                amount = data_list["amount"],
+                unit = data_list["unit"],
+                is_bought = False
+            )
+
+            # Предварительная подготовка данных (чтобы не было 1.0 там, где не нужно)
+            amount_val = int(shopping_item.amount) if shopping_item.amount and shopping_item.amount.is_integer() else shopping_item.amount
+            quantity_text = f"{amount_val} {shopping_item.unit}" if shopping_item.amount else "Не указано"
+
+            # Словарь для красивого отображения категорий (опционально)
+            categories_map = {
+                "grocery": "🍎 Продукты",
+                "pharmacy": "💊 Аптека",
+                "household": "🧼 Дом",
+                "beauty": "✨ Уход",
+                "electronics": "🔌 Техника",
+                "clothes": "👕 Одежда",
+                "other": "📦 Другое"
+            }
+            cat_display = categories_map.get(shopping_item.category, shopping_item.category or "Не указана")
+
+            response_text = (
+                f"🛒 **Товар добавлен в список!**\n\n"
+                f"📦 **Что:** {shopping_item.item}\n"
+                f"🔢 **Кол-во:** {quantity_text}\n"
+                f"📁 **Категория:** {cat_display}\n"
+                f"✅ **Статус:** {'Куплено' if shopping_item.is_bought else 'В списке'}\n\n"
+                f"🆔 ID товара: {shopping_item.id}"
+            )
+
+            save_shopping_item(shopping_item)
+            
+            await message.answer(
+                response_text,
+                reply_markup=None, # нужно добавить удаление 
+                parse_mode="Markdown"
+            )

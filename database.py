@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
 from config import DB_URL
-from models import Base, Task, UserSettings
+from models import Base, Task, UserSettings, ShoppingItem
 
 # инициализация БД
 engine = create_engine(DB_URL, echo=False)
@@ -70,6 +70,18 @@ def save_task(task: Task) -> Task:
         return task
     finally:
         s.close()
+
+def save_shopping_item(shopping_item: ShoppingItem) -> ShoppingItem:
+    """сохранение покупки"""
+    s = get_session()
+    try:
+        s.add(shopping_item)
+        s.commit()
+        s.refresh(shopping_item)
+        return shopping_item
+    finally:
+        s.close()
+
 
 
 def get_tasks_today(user_id: int, day: date) -> List[Task]:
