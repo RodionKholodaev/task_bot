@@ -24,5 +24,46 @@ class Formater:
 
         return response_text
     
+    @staticmethod
+    def format_shopping_list(item: ShoppingItem) -> str:
 
+        # предварительная подготовка данных (чтобы не было 1.0 там, где не нужно)
+        amount_val = int(item.amount) if item.amount and item.amount.is_integer() else item.amount
+        quantity_text = f"{amount_val} {item.unit}" if item.amount else "Не указано"
 
+        # словарь для красивого отображения категорий (опционально)
+        categories_map = {
+            "grocery": "Продукты",
+            "pharmacy": "Лекарства",
+            "household": "Для дома",
+            "beauty": "Гигиена",
+            "electronics": "Техника",
+            "clothes": "Одежда",
+            "other": "Другое"
+        }
+        cat_display = categories_map.get(item.category, item.category or "Не указана")
+
+        response_text = (
+            f"🛒 **Товар добавлен в список!**\n\n"
+            f"📦 **Что:** {item.item}\n"
+            f"🔢 **Кол-во:** {quantity_text}\n"
+            f"📁 **Категория:** {cat_display}\n"
+            f"✅ **Статус:** {'Куплено' if item.is_bought else 'В списке'}\n\n"
+            f"🆔 ID товара: {item.id}"
+        )
+        
+        return response_text
+    
+    
+
+    @staticmethod
+    def format_category_item(item: ShoppingItem) -> str:
+
+        amount_val = int(item.amount) if item.amount and item.amount.is_integer() else item.amount
+        quantity_text = f"{amount_val} {item.unit}" if item.amount else ""
+
+        response_text = (
+            f"*{item.item} {quantity_text}*\n"
+            f"ID товара: {item.id}"
+        )
+        return response_text

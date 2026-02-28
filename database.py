@@ -133,6 +133,18 @@ def get_tasks_by_category(user_id: int, category: str) -> List[Task]:
     finally:
         s.close()
 
+
+def get_item_by_category(user_id: int, category: str) -> List[ShoppingItem]:
+    s = get_session()
+    try:
+        return s.query(ShoppingItem).filter(
+            ShoppingItem.user_id == user_id,
+            ShoppingItem.category == category,
+            ShoppingItem.is_bought == False
+        ).all()
+    finally:
+        s.close()
+
 def get_task_by_id(task_id: int) -> Task:
     """получение задачи по ее id"""
     s = get_session()
@@ -164,6 +176,19 @@ def mark_done(task_id: int, user_id: int) -> bool:
         s.close()
 
 
+def mark_bought(item_id: int, user_id: int) -> bool:
+    """Пометить предмет купленным"""
+    s = get_session()
+    try:
+        item = s.query(ShoppingItem).filter_by(id=item_id, user_id=user_id).first()
+        if not item:
+            return False
+        item.is_bought = True
+        s.commit()
+        return True
+    finally:
+        s.close()
+
 def delete_task(task_id: int, user_id: int) -> bool:
     """Удалить задачу"""
     s = get_session()
@@ -177,4 +202,16 @@ def delete_task(task_id: int, user_id: int) -> bool:
     finally:
         s.close()
 
+def delete_item(item_id: int, user_id: int) -> bool:
+    """Удалить задачу"""
+    s = get_session()
+    try:
+        item = s.query(ShoppingItem).filter_by(id=item_id, user_id=user_id).first()
+        if not item:
+            return False
+        s.delete(item)
+        s.commit()
+        return True
+    finally:
+        s.close()
 

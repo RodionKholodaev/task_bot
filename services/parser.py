@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from database import get_user_settings
-class TaskService:
+class Parser:
     @staticmethod
     def get_user_time(user_id : int) -> str | None:
         settings = get_user_settings(user_id)
@@ -62,3 +62,11 @@ class TaskService:
 
         return ans
     
+    @staticmethod
+    def parse_num(str_num: str) -> float | None:
+        try:
+            if str_num == "": return None
+            else: return float(str_num)
+        except:
+            print(f"Нейросеть в поле для числа вернула символ(ы): {str_num}")
+            return None

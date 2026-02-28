@@ -4,7 +4,16 @@ from aiogram import Router, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 
-from keyboards import main_keyboard, category_keyboard, CATEGORY_MAP, READABLE_CATEGORIES, task_inline
+from keyboards import (
+    main_keyboard, 
+    duration_category_keyboard,
+    purchase_category_keyboard, 
+    TASK_CATEGORY_MAP, 
+    READABLE_CATEGORIES, 
+    task_inline, 
+    shopping_inline, 
+    PURCHASE_CATEGORY_MAP
+    )
 
 from database import (
     get_user_settings, 
@@ -12,6 +21,7 @@ from database import (
     get_tasks_week, 
     get_all_tasks, 
     get_tasks_by_category, 
+    get_item_by_category,
     upsert_user_settings, 
     get_task_by_id,
     delete_task,
@@ -22,7 +32,7 @@ from database import (
 from models import Task, ShoppingItem
 from ai_client import parse_text, edit_task
 
-from services.task_service import TaskService
+from services.parser import Parser
 from services.message_service import MessageService
 from services.formater import Formater
 
@@ -49,7 +59,7 @@ async def start(message: Message):
 @router.message(F.text == "⏱ По длительности")
 async def by_duration(message: Message):
     """Показать меню выбора по длительности"""
-    await message.answer("Выбери категорию:", reply_markup=category_keyboard())
+    await message.answer("Выбери категорию:", reply_markup=duration_category_keyboard())
 
 
 @router.message(F.text == "⬅️ Назад")
@@ -58,12 +68,12 @@ async def back(message: Message):
     await message.answer("Главное меню", reply_markup=main_keyboard())
 
 
-@router.message(F.text.in_(CATEGORY_MAP))
-async def show_by_category(message: Message):
+@router.message(F.text.in_(TASK_CATEGORY_MAP))
+async def show_task_by_category(message: Message):
     """Показать задачи по выбранной категории"""
     
     user_id = message.from_user.id
-    category = CATEGORY_MAP[message.text]
+    category = TASK_CATEGORY_MAP[message.text]
 
     tasks = get_tasks_by_category(user_id, category)
 
@@ -86,6 +96,29 @@ async def show_by_category(message: Message):
             reply_markup=task_inline(t.id)
         )
 
+
+@router.message(F.text.in_(PURCHASE_CATEGORY_MAP))
+async def show_item_by_category(message: Message):
+    """Показать покупки по выбранной категории"""
+    
+    user_id = message.from_user.id
+    category = PURCHASE_CATEGORY_MAP[message.text]
+
+    item = get_item_by_category(user_id, category)
+
+    if not item:
+        await message.answer("Покупок нет")
+        return
+
+    for i in item:
+
+        answer = Formater.format_category_item(i)
+
+        await message.answer(
+            answer,
+            reply_markup=shopping_inline(i.id),
+            parse_mode="Markdown"
+        )
 
 
 @router.message(F.text == "📅 Сегодня")
@@ -172,6 +205,10 @@ async def all_tasks(message: Message):
             answer,
             reply_markup=task_inline(t.id)
             )
+        
+@router.message(F.text == "🛒 Покупки")
+async def purchase(message: Message):
+    await message.answer("Выбери категорию:", reply_markup=purchase_category_keyboard())
 
 
 
@@ -204,7 +241,7 @@ async def handle_reply(message: Message):
     """
     if message.reply_to_message:
         user_id = message.from_user.id
-        dt_string = TaskService.get_user_time(user_id)
+        dt_string = Parser.get_user_time(user_id)
 
         if not dt_string:
             await message.answer("Часовой пояс не найден, добавьте его в настройках")
@@ -248,7 +285,7 @@ async def handle_reply(message: Message):
 
         data = result["items"][0]
 
-        data_time = TaskService.parse_date(data)
+        data_time = Parser.parse_date(data)
 
         task = Task(
             user_id=message.from_user.id,
@@ -286,7 +323,7 @@ async def new_task(message: Message):
     print(f"поступило сообщение {message.text}")
 
     user_id = message.from_user.id
-    dt_string = TaskService.get_user_time(user_id)
+    dt_string = Parser.get_user_time(user_id)
 
     if not dt_string:
         await message.answer("Часовой пояс не найден, добавьте его в настройках")
@@ -309,14 +346,19 @@ async def new_task(message: Message):
 
     
     data_list = data_message.get("items")
+
+    if data_list == []:
+        message.answer("Не получилось выделить задачу из вашего текста. Пожалуйста напишите подробнее")
+        return
+
     if data_message["type"]=="tasks":
         for data in data_list:
 
-            data_time = TaskService.parse_date(data)
+            data_time = Parser.parse_date(data)
 
             # Создаем объект задачи
             task = Task(
-                user_id=message.from_user.id,
+                user_id=user_id,
                 description=data.get("task", message.text),
                 category=data.get("category", "short_30"),
                 deadline_day=data_time["date"],
@@ -336,47 +378,25 @@ async def new_task(message: Message):
                 parse_mode="Markdown"
             )
 
-    elif ["type"]=="shopping_list":
+    elif data_message["type"]=="shopping_list":
         for data in data_list:
-
+            amount = Parser.parse_num(data["amount"])
+            
             shopping_item = ShoppingItem(
-                user_id=message.from_user.id,
+                user_id=user_id,
                 item = data["item"],
                 category = data["category"],
-                amount = data["amount"],
+                amount = amount,
                 unit = data["unit"],
                 is_bought = False
             )
 
-            # Предварительная подготовка данных (чтобы не было 1.0 там, где не нужно)
-            amount_val = int(shopping_item.amount) if shopping_item.amount and shopping_item.amount.is_integer() else shopping_item.amount
-            quantity_text = f"{amount_val} {shopping_item.unit}" if shopping_item.amount else "Не указано"
+            item = save_shopping_item(shopping_item)
 
-            # Словарь для красивого отображения категорий (опционально)
-            categories_map = {
-                "grocery": "🍎 Продукты",
-                "pharmacy": "💊 Аптека",
-                "household": "🧼 Дом",
-                "beauty": "✨ Уход",
-                "electronics": "🔌 Техника",
-                "clothes": "👕 Одежда",
-                "other": "📦 Другое"
-            }
-            cat_display = categories_map.get(shopping_item.category, shopping_item.category or "Не указана")
+            response_text = Formater.format_shopping_list(shopping_item)
 
-            response_text = (
-                f"🛒 **Товар добавлен в список!**\n\n"
-                f"📦 **Что:** {shopping_item.item}\n"
-                f"🔢 **Кол-во:** {quantity_text}\n"
-                f"📁 **Категория:** {cat_display}\n"
-                f"✅ **Статус:** {'Куплено' if shopping_item.is_bought else 'В списке'}\n\n"
-                f"🆔 ID товара: {shopping_item.id}"
-            )
-
-            save_shopping_item(shopping_item)
-            
             await message.answer(
                 response_text,
-                reply_markup=None, # нужно добавить удаление 
+                reply_markup=shopping_inline(item.id), 
                 parse_mode="Markdown"
             )

@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Time
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Time, Float
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -34,8 +34,8 @@ class ShoppingItem(Base):
     category = Column(String(100), nullable=True) # "Продукты", "Аптека" и т.д.
     
     # Количественные характеристики
-    amount = Column(Float, default=1.0)
-    unit = Column(String(20), default="шт") # кг, мл, упак.
+    amount = Column(Float, nullable=True)
+    unit = Column(String(20), nullable=True) # кг, мл, упак.
     
     # Состояние
     is_bought = Column(Boolean, default=False)
