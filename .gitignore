@@ -5,3 +5,5 @@ tasks.db
 .pyc
 GUIDE.md
 ARCHITECTURE_REPORT.md
+__pycache__/
+*.pyc
