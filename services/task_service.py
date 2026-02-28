@@ -24,9 +24,13 @@ class TaskService:
             deadline_day = None
 
         try:
+            print(f"пытаюсь получить время")
             time_str = data.get("time")
+            print(f"получил {time_str}")
             deadline_time = datetime.strptime(time_str, "%H:%M").time() if time_str else None
+            print(f"после перевода в во время: {deadline_time}")
         except (ValueError, TypeError):
+            print("попал в exception в time")
             deadline_time = None
         
         try:
@@ -39,9 +43,13 @@ class TaskService:
             remind_date=None
 
         try:
+            print(f"пытаюсь получить время напоминания")
             remind_time_str=data.get("remind_time")
+            print(f"получил {remind_time_str}")
             remind_time=datetime.strptime(remind_time_str, "%H:%M").time() if remind_time_str else None
+            print(f"после перевода в во время: {remind_time}")
         except:
+            print("попал в exception в remind_time")
             remind_time=None
         
         ans={
