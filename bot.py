@@ -14,8 +14,9 @@ from handlers.commands import router as commands_router
 from handlers.callbacks import router as callbacks_router
 from notifications import notification_loop
 
+from logging_conf import setup_logging
+
 # Настройка логирования
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Инициализация бота и диспетчера
@@ -29,9 +30,11 @@ dp.include_router(callbacks_router)
 
 async def main():
     """Главная функция запуска бота"""
+
+    setup_logging()
+    logger.info("Бот начал работу")
     # Инициализация БД
     init_db()
-    logger.info("Database initialized")
     
     # Запуск цикла уведомлений
     asyncio.create_task(notification_loop())
@@ -43,5 +46,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    print("бот начал работу")
     asyncio.run(main())
