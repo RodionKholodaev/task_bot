@@ -306,9 +306,11 @@ async def new_task(message: Message):
 
     if not dt_string:
         await message.answer("Часовой пояс не найден, добавьте его в настройках")
+        return
 
     # проверка на длину (500 слов)
-    if len(message.text) > 6*500:
+    MAX_TEXT_LENGTH = 6*500
+    if len(message.text) > MAX_TEXT_LENGTH:
         await message.answer("Слишком длинный текст")
         return
     
@@ -369,15 +371,15 @@ async def new_task(message: Message):
                 parse_mode="Markdown"
             )
 
-    if data_message["type"]=="shopping_list":
+    elif ["type"]=="shopping_list":
         for data in data_list:
 
             shopping_item = ShoppingItem(
                 user_id=message.from_user.id,
-                item = data_list["item"],
-                category = data_list["category"],
-                amount = data_list["amount"],
-                unit = data_list["unit"],
+                item = data["item"],
+                category = data["category"],
+                amount = data["amount"],
+                unit = data["unit"],
                 is_bought = False
             )
 
