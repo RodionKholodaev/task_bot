@@ -24,6 +24,7 @@ from ai_client import parse_text, edit_task
 
 from services.task_service import TaskService
 from services.message_service import MessageService
+from services.formater import Formater
 
 router = Router()
 
@@ -262,24 +263,7 @@ async def handle_reply(message: Message):
         # Сохраняем в БД
         save_task(task)
 
-        # Формируем красивый ответ
-        cat_text = READABLE_CATEGORIES.get(task.category, task.category)
-        date_text = task.deadline_day.strftime("%d-%m-%Y") if task.deadline_day else None
-        time = task.deadline_time.strftime("%H:%M") if task.deadline_time else None
-        remind_date_str=task.remind_date.strftime("%d-%m-%Y") if task.remind_date else None
-        remind_time = task.remind_time.strftime("%H:%M") if task.remind_time else None
-
-
-        response_text = (
-            f"✅ **Задача Обновлена!**\n\n"
-            f"📝 **Что:** {task.description}\n"
-            f"📁 **Категория:** {cat_text}\n"
-            f"📅 **Дата:** {date_text}\n"
-            f"⏰ **Время:** {time}\n"
-            f"🚨 **Напоминание дата:** {remind_date_str}\n"
-            f"⏱️ **Напоминание время:** {remind_time}\n"
-            f"🆔 ID задачи: {task.id}"
-        )
+        response_text = Formater.format_task(task, make_task = False)
 
         await message.answer(
             response_text,
@@ -344,27 +328,8 @@ async def new_task(message: Message):
             # Сохраняем в БД
             save_task(task)
 
-            # Формируем красивый ответ (нужно делать не тут)
-            cat_text = READABLE_CATEGORIES.get(task.category, task.category)
-            date_text = task.deadline_day.strftime("%d-%m-%Y") if task.deadline_day else None
-            time = task.deadline_time.strftime("%H:%M") if task.deadline_time else None
-            remind_date_str=task.remind_date.strftime("%d-%m-%Y") if task.remind_date else None
-            remind_time = task.remind_time.strftime("%H:%M") if task.remind_time else None
-            
+            response_text = Formater.format_task(task, make_task = True)
 
-
-            response_text = (
-                f"✅ **Задача добавлена!**\n\n"
-                f"📝 **Что:** {task.description}\n"
-                f"📁 **Категория:** {cat_text}\n"
-                f"📅 **Дата:** {date_text}\n"
-                f"⏰ **Время:** {time}\n"
-                f"🚨 **Напоминание дата:** {remind_date_str}\n"
-                f"⏱️ **Напоминание время:** {remind_time}\n"
-                f"🆔 ID задачи: {task.id}"
-            )
-
- 
             await message.answer(
                 response_text,
                 reply_markup=task_inline(task.id),
