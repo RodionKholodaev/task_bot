@@ -17,7 +17,7 @@ from keyboards import (
 
 from database import (
     get_user_settings, 
-    get_tasks_today, 
+    get_tasks_for_day, 
     get_tasks_week, 
     get_all_tasks, 
     get_tasks_by_category, 
@@ -121,35 +121,45 @@ async def show_item_by_category(message: Message):
             parse_mode="Markdown"
         )
 
-
-@router.message(F.text == "📅 Сегодня")
-async def today(message: Message):
-    """Показать задачи на сегодня"""
+#  вывод задач на день (вспомогательная функция)
+async def show_tasks_for_day(message: Message, day_shift: int):
     settings = get_user_settings(message.from_user.id)
     offset = settings.utc_offset if settings else 0
-    today = (datetime.utcnow() + timedelta(hours=offset)).date()
 
-    tasks = get_tasks_today(message.from_user.id, today)
-    
+    target_date = (
+        datetime.utcnow() + timedelta(days=day_shift, hours=offset)
+    ).date()
+
+    tasks = get_tasks_for_day(message.from_user.id, target_date)
+
     if not tasks:
-        await message.answer("Сегодня задач нет 🎉")
+        await message.answer("Задач нет 🎉")
         return
 
     for t in tasks:
+        deadline_time = (
+            t.deadline_time.strftime('%H:%M')
+            if t.deadline_time else ""
+        )
 
-        deadlinne_time=t.deadline_time.strftime('%H-%M') if t.deadline_time else ""
-        
         answer = (
-            f"{deadlinne_time} {t.description}\n"
+            f"{deadline_time} {t.description}\n"
             f"ID задачи: {t.id}"
-            )
+        )
 
         await message.answer(
-            answer, 
+            answer,
             reply_markup=task_inline(t.id)
-            )
+        )
+
+@router.message(F.text == "📅 Сегодня")
+async def today(message: Message):
+    await show_tasks_for_day(message, day_shift=0)
 
 
+@router.message(F.text == "🌅 Завтра")
+async def tomorrow(message: Message):
+    await show_tasks_for_day(message, day_shift=1)
 
 @router.message(F.text == "📆 Неделя")
 async def week(message: Message):

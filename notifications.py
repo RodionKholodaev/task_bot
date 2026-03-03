@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from aiogram import Bot
 
 from config import BOT_TOKEN
-from database import get_session, get_tasks_today, get_all_tasks, get_tasks_to_remind, get_all_users
+from database import get_session, get_tasks_for_day, get_all_tasks, get_tasks_to_remind, get_all_users
 from models import UserSettings, Task
 
 bot = Bot(token=BOT_TOKEN)
@@ -26,7 +26,7 @@ async def notification_loop():
                 local_time.hour == u.notify_time.hour and
                 local_time.minute == u.notify_time.minute
             ):
-                tasks = get_tasks_today(u.user_id, local_date)
+                tasks = get_tasks_for_day(u.user_id, local_date)
                 if tasks:
                     text = "🔔 Задачи на сегодня:\n" + "\n".join(
                         f"- {t.description}" for t in tasks

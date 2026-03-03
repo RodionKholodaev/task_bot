@@ -84,8 +84,8 @@ def save_shopping_item(shopping_item: ShoppingItem) -> ShoppingItem:
 
 
 
-def get_tasks_today(user_id: int, day: date) -> List[Task]:
-    """Получение задач на сегодня"""
+def get_tasks_for_day(user_id: int, day: date) -> List[Task]:
+    """Получение задач на указаный день"""
     s = get_session()
     try:
         return s.query(Task).filter(

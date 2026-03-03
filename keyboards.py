@@ -6,7 +6,7 @@ def main_keyboard() -> ReplyKeyboardMarkup:
     """Главное меню"""
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="🔜 Завтра")],
+            [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="🌅 Завтра")],
             [ KeyboardButton(text="📆 Неделя"), KeyboardButton(text="📋 Все задачи")],
             [KeyboardButton(text="⏱ По длительности"), KeyboardButton(text="🛒 Покупки")],
             [KeyboardButton(text="⚙️ Настройки")],
