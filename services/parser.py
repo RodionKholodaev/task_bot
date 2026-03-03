@@ -2,17 +2,35 @@ from datetime import datetime, timedelta, timezone
 from database import get_user_settings
 class Parser:
     @staticmethod
-    def get_user_time(user_id : int) -> str | None:
+    def get_user_time(user_id: int) -> str | None:
+        
+        WEEKDAYS_RU = {
+            0: "Понедельник",
+            1: "Вторник",
+            2: "Среда",
+            3: "Четверг",
+            4: "Пятница",
+            5: "Суббота",
+            6: "Воскресенье",
+        }
+
         settings = get_user_settings(user_id)
         if not settings:
             return None
-        else:
-            # Получаем дату в часовом поясе пользователя
-            user_tz = timezone(timedelta(hours=settings.utc_offset))
-            user_datetime = datetime.now(user_tz)
-            dt_string = user_datetime.strftime("%A, %Y-%m-%d %H:%M") # добавляем и день недели
-        
-            return dt_string
+
+        # Часовой пояс пользователя
+        user_tz = timezone(timedelta(hours=settings.utc_offset))
+        user_datetime = datetime.now(user_tz)
+
+        # День недели
+        weekday_ru = WEEKDAYS_RU[user_datetime.weekday()]
+        weekday_en = user_datetime.strftime("%A")
+
+        # Итоговая строка
+        dt_string = f"{weekday_ru} ({weekday_en}), {user_datetime.strftime('%Y-%m-%d %H:%M')}"
+
+        print(f"день, дата и время для передачи в нейросеть: {dt_string}")
+        return dt_string
 
     @staticmethod
     def parse_date(data: dict) -> dict:
