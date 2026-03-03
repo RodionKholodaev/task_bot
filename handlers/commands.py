@@ -260,69 +260,42 @@ async def handle_reply(message: Message):
         user_id = message.from_user.id
         task_text = message.reply_to_message.text
 
-        task_id = MessageService.extract_task_id(task_text)
+        id_type = MessageService.get_id_info(task_text)
 
-        task = get_task_by_id(task_id)
+        type = id_type["type"]
+        id = id_type["id"]
+        request = message.text
 
-        if not task:
-            await message.answer("Не удалось найти задачу для редактирования.")
-            return
+        description = MessageService.make_description(id, type, dt_string,request)
 
+        result = await edit_task(description, dt_string)
 
-        information = {
-            "request": message.text,
-            "category": task.category,
-            "date": task.deadline_day,
-            "time": task.deadline_time,
-            "remind_date": task.remind_date,
-            "remind_time": task.remind_time,
-            "task": task.description
-            }
-
-        result = await edit_task(information, dt_string)
-# ------------------------
-#   НЕТ ПРОВЕРКИ НА БРЕД СО СТОРОНЫ НЕЙРОСЕТИ (видимо нужно использовать pydentic)
-        # отправка сообщения в случае если пользователь отправит какой-то бред
-        if result["type"] == "chat":
-            await message.answer(result["message"])
-            return
 
 # ------------------------- 
-        # удаляем старую задачу
+        # удаляем старую сущьность (задачи или покупка)
+        MessageService.delete_entity(id, type, user_id)
 
-        delete_task(task_id, user_id)
+        entity = MessageService.make_save_new_entity(result, type, user_id)
+        if type =="tasks":
+            response_text = Formater.format_task(entity, make_task = False)
+            await message.answer(
+                response_text,
+                reply_markup=task_inline(entity.id),
+                parse_mode="Markdown"
+            )
+        elif type =="shopping_list":
+            response_text = Formater.format_shopping_list(entity)
+            await message.answer(
+                response_text,
+                reply_markup=shopping_inline(entity.id),
+                parse_mode="Markdown"
+            )
 
-        # Создаем объект задачи
-
-        data = result["items"][0]
-
-        data_time = Parser.parse_date(data)
-
-        task = Task(
-            user_id=message.from_user.id,
-            description=data.get("task", message.text),
-            category=data.get("category", "short_30"),
-            deadline_day=data_time["date"],
-            deadline_time=data_time["time"],
-            remind_time=data_time["remind_time"],
-            remind_date=data_time["remind_date"]
-        )
-
-        # Сохраняем в БД
-        save_task(task)
-
-        response_text = Formater.format_task(task, make_task = False)
-
-        await message.answer(
-            response_text,
-            reply_markup=task_inline(task.id),
-            parse_mode="Markdown"
-        )
 
         try:
             await message.reply_to_message.delete()
         except:
-            print(f"не удалось удалить сообщение c id = {task_id}")
+            print(f"не удалось удалить сообщение c id = {id}")
 
         
 

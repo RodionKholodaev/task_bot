@@ -360,19 +360,8 @@ async def parse_text(description: str) -> dict:
     return data
     
 
-async def edit_task(information: dict, date_and_time: str) -> dict:
-    """
-    получает:
-    {
-    "request":"изменения от пользователя"
-    "category": "тип категории",
-    "date": "дата выполнения задачи в формате YYYY-MM-DD или пустая строка",
-    "time": "время выполнения в формате HH:MM или пустая строка",
-    "remind_date": "дата напоминания в формате YYYY-MM-DD или пустая строка",
-    "remind_time": "время напоминания в формате HH:MM или пустая строка",
-    "task": "краткое описание задачи"
-    }
-    """
+async def edit_task(description: str, date_and_time: str) -> dict:
+
     system_msg = f'''
     Ты — ассистент по тайм-менеджменту. Твоя задача — получить задачу или список покупок и комментарий к ним,
     понять комментарий и если нужно изменить элемент и прислать его в нужном формате.
@@ -656,23 +645,6 @@ async def edit_task(information: dict, date_and_time: str) -> dict:
     - Никогда не меняй тип (tasks/shopping_list) без явной просьбы пользователя
     - НЕ МЕНЯЙ ПОЛЯ КОТОРЫЕ ПОЛЬЗОВАТЕЛЬ НЕ ПРОСИТ ИЗМЕНИТЬ!
     '''
-    
-    description = f'''
-    Сегодня {date_and_time}. Вот моя задача:
-    {{
-    "type": "tasks",
-    "items": [
-        {{
-        "category": "{information["category"]}",
-        "date": "{information["date"]}",
-        "time": "{information["time"]}",
-        "remind_date": "{information["remind_date"]}",
-        "remind_time": "{information["remind_time"]}",
-        "task": "{information["task"]}"
-        }}
-    ]
-    }}
-    Вот моя просьба: {information["request"]}
-    '''
+
     data = await ask_llm(description, system_msg)
     return data

@@ -145,6 +145,14 @@ def get_item_by_category(user_id: int, category: str) -> List[ShoppingItem]:
     finally:
         s.close()
 
+def get_item_by_id(item_id: int) -> ShoppingItem:
+    """получение задачи по ее id"""
+    s = get_session()
+    try:
+        return s.query(ShoppingItem).filter(Task.id==item_id).first()
+    finally:
+        s.close()
+
 def get_task_by_id(task_id: int) -> Task:
     """получение задачи по ее id"""
     s = get_session()
