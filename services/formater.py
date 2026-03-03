@@ -5,10 +5,10 @@ class Formater:
     def format_task(task: Task, make_task: bool) -> str:
 
         cat_text = READABLE_CATEGORIES.get(task.category, task.category)
-        date_text = task.deadline_day.strftime("%d-%m-%Y") if task.deadline_day else None
-        time = task.deadline_time.strftime("%H:%M") if task.deadline_time else None
-        remind_date_str=task.remind_date.strftime("%d-%m-%Y") if task.remind_date else None
-        remind_time = task.remind_time.strftime("%H:%M") if task.remind_time else None
+        date_text = task.deadline_day.strftime("%d-%m-%Y") if task.deadline_day else 'Нет'
+        time = task.deadline_time.strftime("%H:%M") if task.deadline_time else 'Нет'
+        remind_date_str=task.remind_date.strftime("%d-%m-%Y") if task.remind_date else 'Нет'
+        remind_time = task.remind_time.strftime("%H:%M") if task.remind_time else 'Нет'
 
         status = "добавлена" if make_task else "обновлена"
         response_text = (
