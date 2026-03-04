@@ -639,6 +639,33 @@ async def edit_task(description: str, date_and_time: str) -> dict:
     ]
     }}
 
+    пример 9 (показать покупку):
+    Сегодня Friday, 2026-02-27 22:19. Вот моя покупка:
+    {{
+    "type": "shopping_list",
+    "items": [
+        {{
+        "category": "other",
+        "item": "шампунь",
+        "amount": "",
+        "unit": ""
+        }}
+    ]
+    }}
+    Вот моя просьба: покажи
+    Твой ответ:
+    {{
+    "type": "shopping_list",
+    "items": [
+        {{
+        "category": "other",
+        "item": "шампунь",
+        "amount": "",
+        "unit": ""
+        }}
+    ]
+    }}
+
     ВАЖНО: 
     - Если пользователь редактирует задачу — используй формат tasks
     - Если пользователь редактирует покупку — используй формат shopping_list

@@ -149,7 +149,7 @@ def get_item_by_id(item_id: int) -> ShoppingItem:
     """получение задачи по ее id"""
     s = get_session()
     try:
-        return s.query(ShoppingItem).filter(Task.id==item_id).first()
+        return s.query(ShoppingItem).filter(ShoppingItem.id==item_id).first()
     finally:
         s.close()
 

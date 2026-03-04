@@ -1,7 +1,7 @@
 import re
 from database import get_task_by_id, get_item_by_id, delete_item, delete_task, save_task, save_shopping_item
-from formater import Formater
-from parser import Parser
+from .formater import Formater
+from .parser import Parser
 from models import Task, ShoppingItem
 
 class MessageService:
@@ -109,11 +109,17 @@ class MessageService:
             data = result["items"][0]
 
             # возможно будет ошибка с форматом!
+            try:
+                amount = float(data.get("amount"))
+            except:
+                amount = None
+
             item = ShoppingItem(
                 user_id = user_id,
+                category = data.get("category"),
                 item = data.get("item"),
-                item = data.get("amount"),
-                item = data.get("unit")
+                amount = amount, # передаю строку, но алхимия преобразует во float
+                unit = data.get("unit")
             )
             save_shopping_item(item)
             return item

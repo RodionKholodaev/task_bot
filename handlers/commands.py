@@ -330,9 +330,10 @@ async def new_task(message: Message):
 
     
     data_list = data_message.get("items")
-
-    if data_list == []:
-        message.answer("Не получилось выделить задачу из вашего текста. Пожалуйста напишите подробнее")
+    print("проверяю на пустой список")
+    if not data_list:
+        print("действительно пустой список")
+        await message.answer("Не получилось выделить задачу из вашего текста. Пожалуйста напишите подробнее")
         return
 
     if data_message["type"]=="tasks":
