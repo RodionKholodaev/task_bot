@@ -5,7 +5,7 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 
 from keyboards import (
-    main_keyboard, 
+    new_main_keyboard, 
     duration_category_keyboard,
     purchase_category_keyboard, 
     TASK_CATEGORY_MAP, 
@@ -52,7 +52,7 @@ async def start(message: Message):
         "📅 **Планирую** — покажу задачи на сегодня, неделю или весь список сразу.\n\n"
         "✏️ **Редактирую ответом** — чтобы изменить или посмотреть задачу или покупку, просто свайпни её сообщение влево и напиши, что поправить!\n\n"
         "Настрой свой часовой пояс в настройках, чтобы уведомления приходили вовремя!",
-        reply_markup=main_keyboard(),
+        reply_markup=new_main_keyboard(),
         parse_mode="Markdown"
     )
 
@@ -66,7 +66,7 @@ async def by_duration(message: Message):
 @router.message(F.text == "⬅️ Назад")
 async def back(message: Message):
     """Вернуться в главное меню"""
-    await message.answer("Главное меню", reply_markup=main_keyboard())
+    await message.answer("Главное меню", reply_markup=new_main_keyboard())
 
 
 @router.message(F.text.in_(TASK_CATEGORY_MAP))
@@ -241,7 +241,7 @@ async def save_settings(message: Message):
         int(offset_str),
         datetime.strptime(time_str, "%H:%M").time()
     )
-    await message.answer("Настройки сохранены ✅", reply_markup=main_keyboard())
+    await message.answer("Настройки сохранены ✅", reply_markup=new_main_keyboard())
 
 
 

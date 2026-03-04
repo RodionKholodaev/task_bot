@@ -2,7 +2,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMar
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 
-def main_keyboard() -> ReplyKeyboardMarkup:
+def new_main_keyboard() -> ReplyKeyboardMarkup:
     """Главное меню"""
     return ReplyKeyboardMarkup(
         keyboard=[
