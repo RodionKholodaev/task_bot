@@ -1,6 +1,11 @@
 from datetime import datetime, timedelta, timezone
 from database import get_user_settings
 class Parser:
+    """
+    формирует дату и время для отдачи в промте для нейросети
+    формирует дату из строки
+    переводит чисто из строки в float
+    """
     @staticmethod
     def get_user_time(user_id: int) -> str | None:
         

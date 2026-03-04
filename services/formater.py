@@ -1,6 +1,10 @@
 from models import Task, ShoppingItem
 from keyboards import READABLE_CATEGORIES
 class Formater:
+    """
+    Создает ответ пользователю при создании/редактировании задачи/покупки
+    Создает ответ пользователю при выводе покупки (а где задача?)
+    """
     @staticmethod
     def format_task(task: Task, make_task: bool) -> str:
 
