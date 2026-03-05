@@ -35,6 +35,8 @@ from ai_client import parse_text, edit_task
 from services.parser import Parser
 from services.message_service import MessageService
 from services.formater import Formater
+from services.task_service import TaskService
+from services.shopping_service import ShoppingService
 
 router = Router()
 
@@ -96,10 +98,7 @@ async def show_task_by_category(message: Message):
 async def show_item_by_category(message: Message):
     """Показать покупки по выбранной категории"""
     
-    user_id = message.from_user.id
-    category = PURCHASE_CATEGORY_MAP[message.text]
-
-    item = get_item_by_category(user_id, category)
+    item = ShoppingService.get_category_item(message.from_user.id, message.text)
 
     if not item:
         await message.answer("Покупок нет")
@@ -117,14 +116,8 @@ async def show_item_by_category(message: Message):
 
 #  вывод задач на день (вспомогательная функция)
 async def show_tasks_for_day(message: Message, day_shift: int):
-    settings = get_user_settings(message.from_user.id)
-    offset = settings.utc_offset if settings else 0
 
-    target_date = (
-        datetime.utcnow() + timedelta(days=day_shift, hours=offset)
-    ).date()
-
-    tasks = get_tasks_for_day(message.from_user.id, target_date)
+    tasks = TaskService.get_day_tasks(message.from_user.id, day_shift)
 
     if not tasks:
         await message.answer("Задач нет 🎉")
@@ -151,13 +144,7 @@ async def tomorrow(message: Message):
 @router.message(F.text == "📆 Неделя")
 async def week(message: Message):
     """Показать задачи на неделю"""
-    settings = get_user_settings(message.from_user.id)
-    offset = settings.utc_offset if settings else 0
-
-    start = (datetime.utcnow() + timedelta(hours=offset)).date()
-    end = start + timedelta(days=7)
-
-    tasks = get_tasks_week(message.from_user.id, start, end)
+    tasks = TaskService.get_week_task(message.from_user.id)
     if not tasks:
         await message.answer("На неделю задач нет 🎉")
         return
@@ -176,7 +163,7 @@ async def week(message: Message):
 @router.message(F.text == "📋 Все задачи")
 async def all_tasks(message: Message):
     """Показать все задачи"""
-    tasks = get_all_tasks(message.from_user.id)
+    tasks = TaskService.get_all_tasks(message.from_user.id)
     if not tasks:
         await message.answer("Задач нет")
         return
@@ -221,56 +208,55 @@ async def save_settings(message: Message):
 @router.message(F.reply_to_message)
 async def handle_reply(message: Message):
     """
-    Обработчик для ответов на сообщения бота, чтобы редактировать задачи.
+    Обработчик для ответов на сообщения бота, чтобы редактировать задачи и покупки.
     """
-    if message.reply_to_message:
-        user_id = message.from_user.id
-        dt_string = Formater.get_user_time(user_id)
 
-        if not dt_string:
-            await message.answer("Часовой пояс не найден, добавьте его в настройках")
+    user_id = message.from_user.id
+    dt_string = Formater.get_user_time(user_id)
 
-        user_id = message.from_user.id
-        task_text = message.reply_to_message.text
+    if not dt_string:
+        await message.answer("Часовой пояс не найден, добавьте его в настройках")
 
-        id_type = Parser.get_id_info(task_text)
+    task_text = message.reply_to_message.text
 
-        type = id_type["type"]
-        id = id_type["id"]
-        request = message.text
+    id_type = Parser.get_id_info(task_text)
 
-        description = Formater.make_description(id, type, dt_string,request)
+    type = id_type["type"]
+    id = id_type["id"]
+    request = message.text
 
-        result = await edit_task(description, dt_string)
+    description = Formater.make_description(id, type, dt_string,request)
+
+    result = await edit_task(description, dt_string)
 
 
 # ------------------------- 
-        # удаляем старую сущьность (задачи или покупка)
-        MessageService.delete_entity(id, type, user_id)
+    # удаляем старую сущность (задачи или покупка)
+    MessageService.delete_entity(id, type, user_id)
 
-        entity = MessageService.make_save_new_entity(result, type, user_id)
-        if type =="tasks":
-            response_text = Formater.format_task(entity, make_task = False)
-            await message.answer(
-                response_text,
-                reply_markup=task_inline(entity.id),
-                parse_mode="Markdown"
-            )
-        elif type =="shopping_list":
-            response_text = Formater.format_shopping_list(entity)
-            await message.answer(
-                response_text,
-                reply_markup=shopping_inline(entity.id),
-                parse_mode="Markdown"
-            )
+    entity = MessageService.make_save_new_entity(result, type, user_id)
+    if type =="tasks":
+        response_text = Formater.format_task(entity, make_task = False)
+        await message.answer(
+            response_text,
+            reply_markup=task_inline(entity.id),
+            parse_mode="Markdown"
+        )
+    elif type =="shopping_list":
+        response_text = Formater.format_shopping_list(entity)
+        await message.answer(
+            response_text,
+            reply_markup=shopping_inline(entity.id),
+            parse_mode="Markdown"
+        )
 
 
-        try:
-            await message.reply_to_message.delete()
-        except:
-            print(f"не удалось удалить сообщение c id = {id}")
+    try:
+        await message.reply_to_message.delete()
+    except:
+        print(f"не удалось удалить сообщение c id = {id}")
 
-        
+    
 
 # --------------------------
 

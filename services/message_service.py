@@ -10,6 +10,10 @@ class MessageService:
     удадение сущности
     создание и сохранение новой сущности
     """
+    @staticmethod
+    def send_task(message, task):
+        pass
+
         
     @staticmethod
     def delete_entity(id:int, type: str, user_id: int):
