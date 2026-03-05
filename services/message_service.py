@@ -10,57 +10,6 @@ class MessageService:
     удадение сущности
     создание и сохранение новой сущности
     """
-    
-    # слишком много в одном методе
-    @staticmethod
-    def make_description(id: int, type: str, dt_string: str, request: str) -> str | None:
-        if type == "tasks":
-            task = get_task_by_id(id)
-            if not task:
-                return None
-            description = f'''
-            Сегодня {dt_string}. Вот моя задача:
-            {{
-            "type": "tasks",
-            "items": [
-                {{
-                "category": "{task.category}",
-                "date": "{task.deadline_day}",
-                "time": "{task.deadline_time}",
-                "remind_date": "{task.remind_date}",
-                "remind_time": "{task.remind_time}",
-                "task": "{task.description}"
-                }}
-            ]
-            }}
-            Вот моя просьба: {request}
-            '''
-            return description
-        elif type == "shopping_list":
-            
-            item = get_item_by_id(id)
-            if not item:
-                return None
-            
-            description = f'''
-            Сегодня {dt_string}. Вот моя покупка:
-            {{
-            "type": "shopping_list",
-            "items": [
-                {{
-                "category": {item.category},
-                "item": {item.item},
-                "amount": {item.amount},
-                "unit": {item.unit}
-                }}
-            ]
-            }}
-            Вот моя просьба: {request}
-            '''
-            return description
-        else:
-            print("неизвестный тип (не задача, не покупка)")
-            return None
         
     @staticmethod
     def delete_entity(id:int, type: str, user_id: int):

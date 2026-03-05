@@ -239,7 +239,7 @@ async def handle_reply(message: Message):
         id = id_type["id"]
         request = message.text
 
-        description = MessageService.make_description(id, type, dt_string,request)
+        description = Formater.make_description(id, type, dt_string,request)
 
         result = await edit_task(description, dt_string)
 

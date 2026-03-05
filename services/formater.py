@@ -1,13 +1,65 @@
 from models import Task, ShoppingItem
 from keyboards import READABLE_CATEGORIES
-from database import get_user_settings
+from database import get_user_settings, get_task_by_id, get_item_by_id
 from datetime import datetime, timedelta, timezone
 class Formater:
     """
     (формирует сообщения для отдачи и получения)
     Создает ответ пользователю при создании/редактировании задачи/покупки
     Создает ответ пользователю при выводе покупки/задачи
+    Создает запрос от пользователя при редактировании
     """
+
+    @staticmethod
+    def make_description(id: int, type: str, dt_string: str, request: str) -> str | None:
+
+        if type == "tasks":
+            task = get_task_by_id(id)
+            if not task:
+                return None
+            description = f'''
+            Сегодня {dt_string}. Вот моя задача:
+            {{
+            "type": "tasks",
+            "items": [
+                {{
+                "category": "{task.category}",
+                "date": "{task.deadline_day}",
+                "time": "{task.deadline_time}",
+                "remind_date": "{task.remind_date}",
+                "remind_time": "{task.remind_time}",
+                "task": "{task.description}"
+                }}
+            ]
+            }}
+            Вот моя просьба: {request}
+            '''
+            return description
+        elif type == "shopping_list":
+            
+            item = get_item_by_id(id)
+            if not item:
+                return None
+            
+            description = f'''
+            Сегодня {dt_string}. Вот моя покупка:
+            {{
+            "type": "shopping_list",
+            "items": [
+                {{
+                "category": {item.category},
+                "item": {item.item},
+                "amount": {item.amount},
+                "unit": {item.unit}
+                }}
+            ]
+            }}
+            Вот моя просьба: {request}
+            '''
+            return description
+        else:
+            print("неизвестный тип (не задача, не покупка)")
+            return None
 
     @staticmethod
     def get_user_time(user_id: int) -> str | None:
