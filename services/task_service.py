@@ -1,6 +1,6 @@
-from database import get_user_settings, get_tasks_for_day, get_tasks_week, get_all_tasks
+from database import get_user_settings, get_tasks_for_day, get_tasks_week, get_all_tasks, get_tasks_by_category
 from datetime import datetime, timedelta
-
+from keyboards import TASK_CATEGORY_MAP
 class TaskService:
     @staticmethod
     def get_day_tasks(user_id: int, day_shift: int):
@@ -28,4 +28,12 @@ class TaskService:
     @staticmethod
     def get_all_tasks(user_id: int):
         tasks = get_all_tasks(user_id)
+        return tasks
+    
+    @staticmethod
+    def get_category_task(user_id: int, category: str):
+        
+        category = TASK_CATEGORY_MAP[category]
+        tasks = get_tasks_by_category(user_id, category)
+        
         return tasks

@@ -76,9 +76,8 @@ async def show_task_by_category(message: Message):
     """Показать задачи по выбранной категории"""
     
     user_id = message.from_user.id
-    category = TASK_CATEGORY_MAP[message.text]
 
-    tasks = get_tasks_by_category(user_id, category)
+    tasks = TaskService.get_category_task(user_id, message.text)
 
     if not tasks:
         await message.answer("Задач нет")
