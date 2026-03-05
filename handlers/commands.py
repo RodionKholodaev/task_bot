@@ -40,6 +40,8 @@ from services.shopping_service import ShoppingService
 
 router = Router()
 
+import logging
+logger = logging.getLogger(__name__)
 
 @router.message(CommandStart())
 async def start(message: Message):
@@ -97,13 +99,13 @@ async def show_task_by_category(message: Message):
 async def show_item_by_category(message: Message):
     """Показать покупки по выбранной категории"""
     
-    item = ShoppingService.get_category_item(message.from_user.id, message.text)
+    items = ShoppingService.get_category_item(message.from_user.id, message.text)
 
-    if not item:
+    if not items:
         await message.answer("Покупок нет")
         return
 
-    for i in item:
+    for i in items:
 
         answer = Formater.format_category_item(i)
 
@@ -184,6 +186,7 @@ async def purchase(message: Message):
 
 @router.message(F.text == "⚙️ Настройки")
 async def settings(message: Message):
+
     """Показать инструкции по настройкам"""
     await message.answer(
         "Отправь настройки в формате:\nUTC_OFFSET HH:MM\n\nПример:\n+3 09:00"
@@ -262,7 +265,7 @@ async def handle_reply(message: Message):
 @router.message()
 async def new_task(message: Message):
     """Обработчик добавления новой задачи"""
-    print(f"поступило сообщение {message.text}")
+    logger.debug(f"поступило сообщение {message.text}")
 
     user_id = message.from_user.id
     dt_string = Formater.get_user_time(user_id)
@@ -277,20 +280,17 @@ async def new_task(message: Message):
         await message.answer("Слишком длинный текст")
         return
     
-    print("иду в функцию обращения к нейронке для класификации задачи")
-    print(f"передаю в функцию время и дату {dt_string}")
+
+    logger.debug(f"передаю в функцию c LLM время и дату: {dt_string}")
     data_message = await parse_text(f"сегодня {dt_string}, {message.text}")
 
     if isinstance(data_message, str):
-        print(data_message)
         await message.answer(f"какая-то ошибка с нейросетью. Текст ошибки {data_message}")
         return
 
     
     data_list = data_message.get("items")
-    print("проверяю на пустой список")
     if not data_list:
-        print("действительно пустой список")
         await message.answer("Не получилось выделить задачу из вашего текста. Пожалуйста напишите подробнее")
         return
     

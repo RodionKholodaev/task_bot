@@ -2,6 +2,10 @@ from models import Task, ShoppingItem
 from keyboards import READABLE_CATEGORIES
 from database import get_user_settings, get_task_by_id, get_item_by_id
 from datetime import datetime, timedelta, timezone
+
+import logging 
+logger = logging.getLogger(__name__)
+
 class Formater:
     """
     (формирует сообщения для отдачи и получения)
@@ -12,8 +16,16 @@ class Formater:
 
     @staticmethod
     def make_description(id: int, type: str, dt_string: str, request: str) -> str | None:
+        """
+        запрос пользователя для редактирования задачи
+        id - id объекта
+        type - тип объекта (задача/продукт)
+        dt_string - день, дата, время
+        request - что пользователю нужно
+        """
 
         if type == "tasks":
+            logger.info("создаю запрос пользователя в LLM для задачи")
             task = get_task_by_id(id)
             if not task:
                 return None
@@ -34,9 +46,10 @@ class Formater:
             }}
             Вот моя просьба: {request}
             '''
+            logger.debug(f"итоговый текст: {description}")
             return description
         elif type == "shopping_list":
-            
+            logger.info("создаю запрос пользователя в LLM для покупки")
             item = get_item_by_id(id)
             if not item:
                 return None
@@ -56,14 +69,15 @@ class Formater:
             }}
             Вот моя просьба: {request}
             '''
+            logger.debug(f"итоговый текст: {description}")
             return description
         else:
-            print("неизвестный тип (не задача, не покупка)")
+            logger.error("Неизвестный тип объекта")
             return None
 
     @staticmethod
     def get_user_time(user_id: int) -> str | None:
-        
+        logger.info("получаем день, дату и время для LLM")
         WEEKDAYS_RU = {
             0: "Понедельник",
             1: "Вторник",
@@ -89,11 +103,13 @@ class Formater:
         # Итоговая строка
         dt_string = f"{weekday_ru} ({weekday_en}), {user_datetime.strftime('%Y-%m-%d %H:%M')}"
 
-        print(f"день, дата и время для передачи в нейросеть: {dt_string}")
+        logger.debug(f"итоговый текст: {dt_string}")
         return dt_string
 
     @staticmethod
     def format_task(task: Task, make_task: bool) -> str:
+
+        logger.info("формирую сообщение о создании/редактировании задачи")
 
         cat_text = READABLE_CATEGORIES.get(task.category, task.category)
         date_text = task.deadline_day.strftime("%d-%m-%Y") if task.deadline_day else 'Нет'
@@ -117,6 +133,8 @@ class Formater:
     
     @staticmethod
     def format_shopping_list(item: ShoppingItem) -> str:
+
+        logger.info("формирую сообщение о создании/редактировании покупки")
 
         # предварительная подготовка данных (чтобы не было 1.0 там, где не нужно)
         amount_val = int(item.amount) if item.amount and item.amount.is_integer() else item.amount
@@ -149,7 +167,7 @@ class Formater:
 
     @staticmethod
     def format_category_item(item: ShoppingItem) -> str:
-
+        logger.info("определяю что хочет изменить пользователь")
         amount_val = int(item.amount) if item.amount and item.amount.is_integer() else item.amount
         quantity_text = f"{amount_val} {item.unit}" if item.amount else ""
 
@@ -157,6 +175,7 @@ class Formater:
             f"*{item.item} {quantity_text}*\n"
             f"ID товара: {item.id}"
         )
+        logger.debug(f"пользователь хочет изменить: {response_text}")
         return response_text
     
     @staticmethod

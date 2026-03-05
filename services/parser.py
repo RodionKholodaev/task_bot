@@ -1,6 +1,10 @@
 from datetime import datetime, timedelta, timezone
 from database import get_user_settings
 import re
+
+import logging
+logger = logging.getLogger(__name__)
+
 class Parser:
     """
     (преобразует один формат в другой)
@@ -9,7 +13,8 @@ class Parser:
     переводит чисто из строки в float
     """
     @staticmethod
-    def get_id_info(text):
+    def get_id_info(text) -> dict:
+        logger.info("id и тип того что хочет изменить пользователь")
         # паттерн для ID товара 
         product_pattern = r"ID товара:\s*(?P<id>\d+)"
         
@@ -25,13 +30,15 @@ class Parser:
         task_match = re.search(task_pattern, text)
         if task_match:
             return {"id": task_match.group("id"), "type": "tasks"}
-        print("НЕ НАЙДЕН ID В СООБЩЕНИИ!")
-        return None
+        logger.error("ID не найден в сообщении!")
+        raise ValueError(f"ID не найден в сообщении: {text}")
+
     
     @staticmethod
     def parse_date(data: dict) -> dict:
         # превращает строку в объект datetime
         # Безопасное извлечение даты и времени
+        logger.info("получаю дату из ответа LLM")
         try:
             deadline_day = datetime.strptime(data["date"], "%Y-%m-%d").date() if data.get("date") else None
         except (ValueError, TypeError):
@@ -72,8 +79,8 @@ class Parser:
             "remind_date": remind_date,
             "remind_time": remind_time
             }
+        logger.debug(f"итоговый словарь со временем: {ans}")
         
-
         return ans
     
     @staticmethod

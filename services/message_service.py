@@ -4,6 +4,9 @@ from .formater import Formater
 from .parser import Parser
 from models import Task, ShoppingItem
 
+import logging
+logger = logging.getLogger(__name__)
+
 class MessageService:
     """
     удадение сущности
@@ -17,7 +20,8 @@ class MessageService:
         elif type == "shopping_list":
             delete_item(id, user_id)
         else:
-            print("неизвестный тип (не задача, не покупка)")
+            logger.error(f"неизвестный тип для удаления: {type}")
+            raise ValueError(f"неизвестная сущность {type}")
             
     @staticmethod
     def make_save_new_entity(result: dict, user_id: int) -> Task | ShoppingItem | None:
@@ -35,9 +39,10 @@ class MessageService:
                 remind_time=data_time["remind_time"],
                 remind_date=data_time["remind_date"]
             )
-
+            logger.debug("создал задачу")
             # Сохраняем в БД
             save_task(task)
+            logger.debug("сохранил задачу")
             return task
         elif result["type"] == "shopping_list":
             data = result["items"][0]
@@ -55,10 +60,13 @@ class MessageService:
                 amount = amount, # передаю строку, но алхимия преобразует во float
                 unit = data.get("unit")
             )
+            logger.debug("создал покупку")
             save_shopping_item(item)
+            logger.debug("сохранил покупку")
             return item
         else:
-            print("неизвестный тип (не задача, не покупка)")
-            return None
+            logger.error(f"попытка создать неизвестный тип! {result["type"]}")
+            raise ValueError(f"попытка создать неизвестный тип! {result["type"]}")
+
 
 
