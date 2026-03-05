@@ -1,10 +1,45 @@
 from models import Task, ShoppingItem
 from keyboards import READABLE_CATEGORIES
+from database import get_user_settings
+from datetime import datetime, timedelta, timezone
 class Formater:
     """
+    (формирует сообщения для отдачи и получения)
     Создает ответ пользователю при создании/редактировании задачи/покупки
-    Создает ответ пользователю при выводе покупки (а где задача?)
+    Создает ответ пользователю при выводе покупки/задачи
     """
+
+    @staticmethod
+    def get_user_time(user_id: int) -> str | None:
+        
+        WEEKDAYS_RU = {
+            0: "Понедельник",
+            1: "Вторник",
+            2: "Среда",
+            3: "Четверг",
+            4: "Пятница",
+            5: "Суббота",
+            6: "Воскресенье",
+        }
+
+        settings = get_user_settings(user_id)
+        if not settings:
+            return None
+
+        # Часовой пояс пользователя
+        user_tz = timezone(timedelta(hours=settings.utc_offset))
+        user_datetime = datetime.now(user_tz)
+
+        # День недели
+        weekday_ru = WEEKDAYS_RU[user_datetime.weekday()]
+        weekday_en = user_datetime.strftime("%A")
+
+        # Итоговая строка
+        dt_string = f"{weekday_ru} ({weekday_en}), {user_datetime.strftime('%Y-%m-%d %H:%M')}"
+
+        print(f"день, дата и время для передачи в нейросеть: {dt_string}")
+        return dt_string
+
     @staticmethod
     def format_task(task: Task, make_task: bool) -> str:
 
@@ -71,3 +106,25 @@ class Formater:
             f"ID товара: {item.id}"
         )
         return response_text
+    
+    @staticmethod
+    def format_short_task(task: Task, is_day: bool) -> str:
+        if is_day:
+            deadline_time = (
+                task.deadline_time.strftime('%H:%M')
+                if task.deadline_time else ""
+            )
+
+            answer = (
+                f"{deadline_time} {task.description}\n"
+                f"ID задачи: {task.id}"
+            )
+        else:
+            deadline_day = task.deadline_day.strftime('%d-%m-%Y') if task.deadline_day else ''
+            deadline_time = task.deadline_time.strftime('%H-%M') if task.deadline_time else ''
+
+            answer = (
+                f" {deadline_day} {deadline_time} {task.description}\n"
+                f"ID задачи: {task.id}"
+                )
+        return answer

@@ -84,13 +84,7 @@ async def show_task_by_category(message: Message):
 
     for t in tasks:
 
-        deadline_day = t.deadline_day.strftime('%d-%m-%Y') if t.deadline_day else ''
-        deadline_time = t.deadline_time.strftime('%H-%M') if t.deadline_time else ''
-
-        answer = (
-            f" {deadline_day} {deadline_time} {t.description}\n"
-            f"ID задачи: {t.id}"
-            )
+        answer = Formater.format_short_task(t, is_day=False)
 
         await message.answer(
             answer,
@@ -137,15 +131,8 @@ async def show_tasks_for_day(message: Message, day_shift: int):
         return
 
     for t in tasks:
-        deadline_time = (
-            t.deadline_time.strftime('%H:%M')
-            if t.deadline_time else ""
-        )
 
-        answer = (
-            f"{deadline_time} {t.description}\n"
-            f"ID задачи: {t.id}"
-        )
+        answer = Formater.format_short_task(t, is_day = True)
 
         await message.answer(
             answer,
@@ -177,13 +164,7 @@ async def week(message: Message):
 
     for t in tasks:
 
-        deadline_time=t.deadline_time.strftime('%H-%M') if t.deadline_time else ""
-        deadline_day = t.deadline_day.strftime('%d-%m-%Y') if t.deadline_day else ""
-
-        answer = (
-            f"{deadline_day} {deadline_time}: {t.description}\n"
-            f"ID задачи: {t.id}"
-            )
+        answer = Formater.format_short_task(t, is_day = False)
         
         await message.answer(
             answer,
@@ -202,15 +183,7 @@ async def all_tasks(message: Message):
 
     for t in tasks:
 
-        status = "✅" if t.is_completed else "⏳" # вообще всегда будет только "⏳", но вдруг это пригодится
-
-        deadline = t.deadline_day.strftime("%d-%m-%Y") if t.deadline_day else ""
-        deadline_time=t.deadline_time.strftime('%H-%M') if t.deadline_time else ""
-
-        answer = (
-            f"{status} {deadline} {deadline_time} {t.description}\n"
-            f"ID задачи: {t.id}"
-            )
+        answer = Formater.format_short_task(t, is_day = False)
         
         await message.answer(
             answer,
@@ -252,7 +225,7 @@ async def handle_reply(message: Message):
     """
     if message.reply_to_message:
         user_id = message.from_user.id
-        dt_string = Parser.get_user_time(user_id)
+        dt_string = Formater.get_user_time(user_id)
 
         if not dt_string:
             await message.answer("Часовой пояс не найден, добавьте его в настройках")
@@ -307,7 +280,7 @@ async def new_task(message: Message):
     print(f"поступило сообщение {message.text}")
 
     user_id = message.from_user.id
-    dt_string = Parser.get_user_time(user_id)
+    dt_string = Formater.get_user_time(user_id)
 
     if not dt_string:
         await message.answer("Часовой пояс не найден, добавьте его в настройках")

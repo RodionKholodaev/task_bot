@@ -2,40 +2,10 @@ from datetime import datetime, timedelta, timezone
 from database import get_user_settings
 class Parser:
     """
-    формирует дату и время для отдачи в промте для нейросети
+    (преобразует один формат в другой)
     формирует дату из строки
     переводит чисто из строки в float
     """
-    @staticmethod
-    def get_user_time(user_id: int) -> str | None:
-        
-        WEEKDAYS_RU = {
-            0: "Понедельник",
-            1: "Вторник",
-            2: "Среда",
-            3: "Четверг",
-            4: "Пятница",
-            5: "Суббота",
-            6: "Воскресенье",
-        }
-
-        settings = get_user_settings(user_id)
-        if not settings:
-            return None
-
-        # Часовой пояс пользователя
-        user_tz = timezone(timedelta(hours=settings.utc_offset))
-        user_datetime = datetime.now(user_tz)
-
-        # День недели
-        weekday_ru = WEEKDAYS_RU[user_datetime.weekday()]
-        weekday_en = user_datetime.strftime("%A")
-
-        # Итоговая строка
-        dt_string = f"{weekday_ru} ({weekday_en}), {user_datetime.strftime('%Y-%m-%d %H:%M')}"
-
-        print(f"день, дата и время для передачи в нейросеть: {dt_string}")
-        return dt_string
 
     @staticmethod
     def parse_date(data: dict) -> dict:

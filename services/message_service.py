@@ -5,6 +5,12 @@ from .parser import Parser
 from models import Task, ShoppingItem
 
 class MessageService:
+    """
+    получение id и типа из сообщения
+    создание сообщения от пользователя
+    удадение сущности
+    создание и сохранение новой сущности
+    """
     @staticmethod
     def get_id_info(text):
         # паттерн для ID товара 
