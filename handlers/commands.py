@@ -233,7 +233,7 @@ async def handle_reply(message: Message):
         user_id = message.from_user.id
         task_text = message.reply_to_message.text
 
-        id_type = MessageService.get_id_info(task_text)
+        id_type = Parser.get_id_info(task_text)
 
         type = id_type["type"]
         id = id_type["id"]

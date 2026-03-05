@@ -3,10 +3,30 @@ from database import get_user_settings
 class Parser:
     """
     (преобразует один формат в другой)
+    получает id и тип из сообщения
     формирует дату из строки
     переводит чисто из строки в float
     """
-
+    @staticmethod
+    def get_id_info(text):
+        # паттерн для ID товара 
+        product_pattern = r"ID товара:\s*(?P<id>\d+)"
+        
+        # паттерн для ID задачи 
+        task_pattern = r"ID задачи:\s*(?P<id>\d+)"
+        
+        # проверяем на товар
+        product_match = re.search(product_pattern, text)
+        if product_match:
+            return {"id": product_match.group("id"), "type": "shopping_list"}
+        
+        # проверяем на задачу
+        task_match = re.search(task_pattern, text)
+        if task_match:
+            return {"id": task_match.group("id"), "type": "tasks"}
+        print("НЕ НАЙДЕН ID В СООБЩЕНИИ!")
+        return None
+    
     @staticmethod
     def parse_date(data: dict) -> dict:
         # превращает строку в объект datetime

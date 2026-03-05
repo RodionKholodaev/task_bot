@@ -6,30 +6,10 @@ from models import Task, ShoppingItem
 
 class MessageService:
     """
-    получение id и типа из сообщения
     создание сообщения от пользователя
     удадение сущности
     создание и сохранение новой сущности
     """
-    @staticmethod
-    def get_id_info(text):
-        # паттерн для ID товара 
-        product_pattern = r"ID товара:\s*(?P<id>\d+)"
-        
-        # паттерн для ID задачи 
-        task_pattern = r"ID задачи:\s*(?P<id>\d+)"
-        
-        # проверяем на товар
-        product_match = re.search(product_pattern, text)
-        if product_match:
-            return {"id": product_match.group("id"), "type": "shopping_list"}
-        
-        # проверяем на задачу
-        task_match = re.search(task_pattern, text)
-        if task_match:
-            return {"id": task_match.group("id"), "type": "tasks"}
-        print("НЕ НАЙДЕН ID В СООБЩЕНИИ!")
-        return None
     
     # слишком много в одном методе
     @staticmethod
