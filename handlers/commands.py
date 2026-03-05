@@ -233,7 +233,7 @@ async def handle_reply(message: Message):
     # удаляем старую сущность (задачи или покупка)
     MessageService.delete_entity(id, type, user_id)
 
-    entity = MessageService.make_save_new_entity(result, type, user_id)
+    entity = MessageService.make_save_new_entity(result, user_id)
     if type =="tasks":
         response_text = Formater.format_task(entity, make_task = False)
         await message.answer(
@@ -293,53 +293,25 @@ async def new_task(message: Message):
         print("действительно пустой список")
         await message.answer("Не получилось выделить задачу из вашего текста. Пожалуйста напишите подробнее")
         return
+    
+    entity = MessageService.make_save_new_entity(data_message, user_id)
 
-    if data_message["type"]=="tasks":
-        for data in data_list:
+    if isinstance(entity,Task):
 
-            data_time = Parser.parse_date(data)
-
-            # Создаем объект задачи
-            task = Task(
-                user_id=user_id,
-                description=data.get("task", message.text),
-                category=data.get("category", "short_30"),
-                deadline_day=data_time["date"],
-                deadline_time=data_time["time"],
-                remind_time=data_time["remind_time"],
-                remind_date=data_time["remind_date"]
-            )
-
-            # Сохраняем в БД
-            save_task(task)
-
-            response_text = Formater.format_task(task, make_task = True)
+            response_text = Formater.format_task(entity, make_task = True)
 
             await message.answer(
                 response_text,
-                reply_markup=task_inline(task.id),
+                reply_markup=task_inline(entity.id),
                 parse_mode="Markdown"
             )
 
-    elif data_message["type"]=="shopping_list":
-        for data in data_list:
-            amount = Parser.parse_num(data["amount"])
-            
-            shopping_item = ShoppingItem(
-                user_id=user_id,
-                item = data["item"],
-                category = data["category"],
-                amount = amount,
-                unit = data["unit"],
-                is_bought = False
-            )
+    elif isinstance(entity,ShoppingItem):
 
-            item = save_shopping_item(shopping_item)
-
-            response_text = Formater.format_shopping_list(shopping_item)
+            response_text = Formater.format_shopping_list(entity)
 
             await message.answer(
                 response_text,
-                reply_markup=shopping_inline(item.id), 
+                reply_markup=shopping_inline(entity.id), 
                 parse_mode="Markdown"
             )

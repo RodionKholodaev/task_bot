@@ -6,15 +6,10 @@ from models import Task, ShoppingItem
 
 class MessageService:
     """
-    создание сообщения от пользователя
     удадение сущности
     создание и сохранение новой сущности
     """
-    @staticmethod
-    def send_task(message, task):
-        pass
 
-        
     @staticmethod
     def delete_entity(id:int, type: str, user_id: int):
         if type == "tasks":
@@ -25,8 +20,8 @@ class MessageService:
             print("неизвестный тип (не задача, не покупка)")
             
     @staticmethod
-    def make_save_new_entity(result: dict, type:str, user_id: int) -> Task | ShoppingItem | None:
-        if type == "tasks":
+    def make_save_new_entity(result: dict, user_id: int) -> Task | ShoppingItem | None:
+        if result["type"] == "tasks":
             data = result["items"][0]
 
             data_time = Parser.parse_date(data)
@@ -44,7 +39,7 @@ class MessageService:
             # Сохраняем в БД
             save_task(task)
             return task
-        elif type == "shopping_list":
+        elif result["type"] == "shopping_list":
             data = result["items"][0]
 
             # возможно будет ошибка с форматом!
