@@ -9,7 +9,7 @@ import logging
 from aiogram import Bot, Dispatcher
 
 from config import BOT_TOKEN
-from database import init_db
+from db.database import init_db
 from handlers.commands import router as commands_router
 from handlers.callbacks import router as callbacks_router
 from notifications import notification_loop

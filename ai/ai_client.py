@@ -360,7 +360,7 @@ async def parse_text(description: str) -> dict:
     return data
     
 
-async def edit_task(description: str, date_and_time: str) -> dict:
+async def edit_entity(description: str, date_and_time: str) -> dict:
 
     system_msg = f'''
     Ты — ассистент по тайм-менеджменту. Твоя задача — получить задачу или список покупок и комментарий к ним,

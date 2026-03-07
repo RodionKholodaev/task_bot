@@ -1,7 +1,7 @@
 from aiogram import Router, F
 from aiogram.types import CallbackQuery
 
-from database import mark_done, delete_task, mark_bought, delete_item
+from db.database import mark_done, delete_task, mark_bought, delete_item
 
 # роутер для подключения к файлу бота
 router = Router()

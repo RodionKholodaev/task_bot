@@ -1,5 +1,5 @@
 import re
-from database import get_task_by_id, get_item_by_id, delete_item, delete_task, save_task, save_shopping_item
+from db.database import get_task_by_id, get_item_by_id, delete_item, delete_task, save_task, save_shopping_item
 from .formater import Formater
 from .parser import Parser
 from models import Task, ShoppingItem

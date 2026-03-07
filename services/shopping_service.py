@@ -1,5 +1,5 @@
 from keyboards import PURCHASE_CATEGORY_MAP
-from database import get_item_by_category
+from db.database import get_item_by_category
 
 import logging
 logger = logging.getLogger(__name__)

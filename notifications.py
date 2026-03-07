@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from aiogram import Bot
 
 from config import BOT_TOKEN
-from database import get_session, get_tasks_for_day, get_all_tasks, get_tasks_to_remind, get_all_users
+from db.database import get_session, get_tasks_for_day, get_all_tasks, get_tasks_to_remind, get_all_users
 from models import UserSettings, Task
 
 bot = Bot(token=BOT_TOKEN)

@@ -5,7 +5,8 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 
 from keyboards import (
-    new_main_keyboard, 
+    new_main_keyboard,
+    profile_keyboard, 
     duration_category_keyboard,
     purchase_category_keyboard, 
     TASK_CATEGORY_MAP, 
@@ -15,22 +16,9 @@ from keyboards import (
     PURCHASE_CATEGORY_MAP
     )
 
-from database import (
-    get_user_settings, 
-    get_tasks_for_day, 
-    get_tasks_week, 
-    get_all_tasks, 
-    get_tasks_by_category, 
-    get_item_by_category,
-    upsert_user_settings, 
-    get_task_by_id,
-    delete_task,
-    save_task,
-    save_shopping_item
-    )
 
 from models import Task, ShoppingItem
-from ai.ai_client import parse_text, edit_task
+from services.ai_service import AiService
 
 from services.parser import Parser
 from services.message_service import MessageService
@@ -38,10 +26,18 @@ from services.formater import Formater
 from services.task_service import TaskService
 from services.shopping_service import ShoppingService
 
+from db.user_repository import UserRepository
+
 router = Router()
 
 import logging
 logger = logging.getLogger(__name__)
+
+from aiogram.fsm.state import StatesGroup, State
+from aiogram.fsm.context import FSMContext
+
+class ProfileState(StatesGroup):
+    waiting_for_description = State()
 
 @router.message(CommandStart())
 async def start(message: Message):
@@ -66,11 +62,17 @@ async def by_duration(message: Message):
     """Показать меню выбора по длительности"""
     await message.answer("Выбери категорию:", reply_markup=duration_category_keyboard())
 
+@router.message(F.text == "🧑 Профиль")
+async def profile(message: Message):
+    """Показать профиль"""
+    await message.answer("Профиль", reply_markup=profile_keyboard())
+
 
 @router.message(F.text == "⬅️ Назад")
 async def back(message: Message):
     """Вернуться в главное меню"""
     await message.answer("Главное меню", reply_markup=new_main_keyboard())
+
 
 
 @router.message(F.text.in_(TASK_CATEGORY_MAP))
@@ -184,7 +186,7 @@ async def purchase(message: Message):
 
 
 
-@router.message(F.text == "⚙️ Настройки")
+@router.message(F.text == "⏰ Настройка уведомлений")
 async def settings(message: Message):
 
     """Показать инструкции по настройкам"""
@@ -193,12 +195,39 @@ async def settings(message: Message):
     )
 
 
+# @router.message(F.text == "📝 О себе")
+# async def self_description(message: Message, state: FSMContext):
+#     """ввод описания себя"""
+
+#     await state.set_state(ProfileState.waiting_for_description)
+
+#     await message.answer(
+#         "Укажи то, чем нужно руководствоваться при анализе твоих задач.\n"
+#         "Любая информация о тебе, которая может помочь сделать ответы чётче"
+#     )
+
+# @router.message(ProfileState.waiting_for_description)
+# async def save_description(message: Message, state: FSMContext):
+
+#     description = message.text
+#     user_id = message.from_user.id
+
+#     # запись в БД
+#     await UserService.update_description(
+#         user_id=user_id,
+#         description=description
+#     )
+
+#     await message.answer("Описание сохранено ✅")
+
+#     await state.clear()
+
 @router.message(F.text.regexp(r"^[+-]?\d+\s\d{2}:\d{2}$"))
 async def save_settings(message: Message):
     """Сохранить пользовательские настройки"""
     
     offset_str, time_str = message.text.split()
-    upsert_user_settings(
+    UserRepository.upsert_user_settings(
         message.from_user.id,
         int(offset_str),
         datetime.strptime(time_str, "%H:%M").time()
@@ -229,7 +258,7 @@ async def handle_reply(message: Message):
 
     description = Formater.make_description(id, type, dt_string,request)
 
-    result = await edit_task(description, dt_string)
+    result = await AiService.ai_edit(description, dt_string, user_id)
 
 
 # ------------------------- 
@@ -282,7 +311,7 @@ async def new_task(message: Message):
     
 
     logger.debug(f"передаю в функцию c LLM время и дату: {dt_string}")
-    data_message = await parse_text(f"сегодня {dt_string}, {message.text}")
+    data_message = await AiService.ai_parse(f"сегодня {dt_string}, {message.text}", user_id)
 
     if isinstance(data_message, str):
         await message.answer(f"какая-то ошибка с нейросетью. Текст ошибки {data_message}")

@@ -1,6 +1,6 @@
 from models import Task, ShoppingItem
 from keyboards import READABLE_CATEGORIES
-from database import get_user_settings, get_task_by_id, get_item_by_id
+from db.database import get_user_settings, get_task_by_id, get_item_by_id
 from datetime import datetime, timedelta, timezone
 
 import logging 

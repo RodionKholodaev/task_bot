@@ -9,11 +9,20 @@ def new_main_keyboard() -> ReplyKeyboardMarkup:
             [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="🌅 Завтра")],
             [ KeyboardButton(text="📆 Неделя"), KeyboardButton(text="📋 Все задачи")],
             [KeyboardButton(text="⏱ По длительности"), KeyboardButton(text="🛒 Покупки")],
-            [KeyboardButton(text="⚙️ Настройки")],
+            [KeyboardButton(text="🧑 Профиль")],
         ],
         resize_keyboard=True,
     )
 
+def profile_keyboard() -> ReplyKeyboardMarkup:
+    """клавиатура в профиле"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📝 О себе"), KeyboardButton(text="⏰ Настройка уведомлений")],
+            [ KeyboardButton(text="💎 Подписка"), KeyboardButton(text="⬅️ Назад")],
+        ],
+        resize_keyboard=True,
+    )
 
 def duration_category_keyboard() -> ReplyKeyboardMarkup:
     """Меню выбора категории по длительности"""

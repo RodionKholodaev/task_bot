@@ -1,4 +1,4 @@
-from database import get_user_settings, get_tasks_for_day, get_tasks_week, get_all_tasks, get_tasks_by_category
+from db.database import get_user_settings, get_tasks_for_day, get_tasks_week, get_all_tasks, get_tasks_by_category
 from datetime import datetime, timedelta
 from keyboards import TASK_CATEGORY_MAP
 
