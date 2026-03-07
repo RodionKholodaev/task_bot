@@ -33,6 +33,16 @@ class ItemLLMResponse(BaseModel):
     item: str
     amount: float | None = Field(default=None)
     unit: Literal["кг", "л", "шт", "м"] | None = Field(default=None)
+    @field_validator(
+        "amount",
+        "unit",
+        mode = "before"
+    )
+    @classmethod
+    def empty_string_to_none(cls, v):
+        if v=="":
+            return None
+        return v
 
 """
 получаю либо это
