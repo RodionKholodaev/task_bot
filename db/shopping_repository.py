@@ -41,7 +41,7 @@ class ShoppingRepository:
 
     @staticmethod
     def mark_bought(item_id: int, user_id: int) -> bool:
-        """Пометить предмет купленным"""
+        """Пометить предмет купленным (на самом деле удаляет предмет)"""
         s = get_session()
         try:
             item = s.query(ShoppingItem).filter_by(id=item_id, user_id=user_id).first()
