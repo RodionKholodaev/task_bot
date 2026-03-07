@@ -1,5 +1,5 @@
 from keyboards import PURCHASE_CATEGORY_MAP
-from db.database import get_item_by_category
+from db.shopping_repository import ShoppingRepository
 
 import logging
 logger = logging.getLogger(__name__)
@@ -9,7 +9,7 @@ class ShoppingService:
     def get_category_item(user_id, category: str):
         logger.info("получаю покупки по категории")
         category = PURCHASE_CATEGORY_MAP[category]
-        items = get_item_by_category(user_id, category)
+        items = ShoppingRepository.get_item_by_category(user_id, category)
         
         return items
     

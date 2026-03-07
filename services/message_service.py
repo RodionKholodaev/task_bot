@@ -1,5 +1,6 @@
 import re
-from db.database import get_task_by_id, get_item_by_id, delete_item, delete_task, save_task, save_shopping_item
+from db.task_repository import TaskRepository
+from db.shopping_repository import ShoppingRepository
 from .formater import Formater
 from .parser import Parser
 from models import Task, ShoppingItem
@@ -16,9 +17,9 @@ class MessageService:
     @staticmethod
     def delete_entity(id:int, type: str, user_id: int):
         if type == "tasks":
-            delete_task(id, user_id)
+            TaskRepository.delete_task(id, user_id)
         elif type == "shopping_list":
-            delete_item(id, user_id)
+            ShoppingRepository.delete_item(id, user_id)
         else:
             logger.error(f"неизвестный тип для удаления: {type}")
             raise ValueError(f"неизвестная сущность {type}")
@@ -41,7 +42,7 @@ class MessageService:
             )
             logger.debug("создал задачу")
             # Сохраняем в БД
-            save_task(task)
+            TaskRepository.save_task(task)
             logger.debug("сохранил задачу")
             return task
         elif result["type"] == "shopping_list":
@@ -57,7 +58,7 @@ class MessageService:
                 unit = val_data.unit
             )
             logger.debug("создал покупку")
-            save_shopping_item(item)
+            ShoppingRepository.save_shopping_item(item)
             logger.debug("сохранил покупку")
             return item
         else:

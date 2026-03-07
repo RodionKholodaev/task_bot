@@ -1,6 +1,8 @@
 from models import Task, ShoppingItem
 from keyboards import READABLE_CATEGORIES
-from db.database import get_user_settings, get_task_by_id, get_item_by_id
+from db.user_repository import UserRepository
+from db.task_repository import TaskRepository
+from db.shopping_repository import ShoppingRepository
 from datetime import datetime, timedelta, timezone
 
 import logging 
@@ -26,7 +28,7 @@ class Formater:
 
         if type == "tasks":
             logger.info("создаю запрос пользователя в LLM для задачи")
-            task = get_task_by_id(id)
+            task = TaskRepository.get_task_by_id(id)
             if not task:
                 return None
             description = f'''
@@ -50,7 +52,7 @@ class Formater:
             return description
         elif type == "shopping_list":
             logger.info("создаю запрос пользователя в LLM для покупки")
-            item = get_item_by_id(id)
+            item = ShoppingRepository.get_item_by_id(id)
             if not item:
                 return None
             
@@ -88,7 +90,7 @@ class Formater:
             6: "Воскресенье",
         }
 
-        settings = get_user_settings(user_id)
+        settings = UserRepository.get_user_settings(user_id)
         if not settings:
             return None
 

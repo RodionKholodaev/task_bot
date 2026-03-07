@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-from db.database import get_user_settings
 import re
 
 import logging
