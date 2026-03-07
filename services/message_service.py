@@ -3,7 +3,7 @@ from database import get_task_by_id, get_item_by_id, delete_item, delete_task, s
 from .formater import Formater
 from .parser import Parser
 from models import Task, ShoppingItem
-
+from ai.schemas import ItemLLMResponse, TaskLLMResponse
 import logging
 logger = logging.getLogger(__name__)
 
@@ -28,16 +28,16 @@ class MessageService:
         if result["type"] == "tasks":
             data = result["items"][0]
 
-            data_time = Parser.parse_date(data)
+            val_data = TaskLLMResponse(**data)
 
             task = Task(
                 user_id=user_id,
-                description=data.get("task"),
-                category=data.get("category", "short_30"),
-                deadline_day=data_time["date"],
-                deadline_time=data_time["time"],
-                remind_time=data_time["remind_time"],
-                remind_date=data_time["remind_date"]
+                description=val_data.task,
+                category=val_data.category,
+                deadline_day=val_data.deadline_date,
+                deadline_time=val_data.deadline_time,
+                remind_time=val_data.remind_time,
+                remind_date=val_data.remind_date
             )
             logger.debug("создал задачу")
             # Сохраняем в БД
@@ -47,18 +47,14 @@ class MessageService:
         elif result["type"] == "shopping_list":
             data = result["items"][0]
 
-            # возможно будет ошибка с форматом!
-            try:
-                amount = float(data.get("amount"))
-            except:
-                amount = None
+            val_data = ItemLLMResponse(**data)
 
             item = ShoppingItem(
                 user_id = user_id,
-                category = data.get("category"),
-                item = data.get("item"),
-                amount = amount, # передаю строку, но алхимия преобразует во float
-                unit = data.get("unit")
+                category = val_data.category,
+                item = val_data.item,
+                amount = val_data.amount, # передаю строку, но алхимия преобразует во float
+                unit = val_data.unit
             )
             logger.debug("создал покупку")
             save_shopping_item(item)

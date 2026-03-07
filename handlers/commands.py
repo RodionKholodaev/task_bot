@@ -30,7 +30,7 @@ from database import (
     )
 
 from models import Task, ShoppingItem
-from ai_client import parse_text, edit_task
+from ai.ai_client import parse_text, edit_task
 
 from services.parser import Parser
 from services.message_service import MessageService
@@ -219,9 +219,9 @@ async def handle_reply(message: Message):
     if not dt_string:
         await message.answer("Часовой пояс не найден, добавьте его в настройках")
 
-    task_text = message.reply_to_message.text
+    entity_text = message.reply_to_message.text
 
-    id_type = Parser.get_id_info(task_text)
+    id_type = Parser.get_id_info(entity_text)
 
     type = id_type["type"]
     id = id_type["id"]
