@@ -5,6 +5,7 @@ from .formater import Formater
 from .parser import Parser
 from models import Task, ShoppingItem
 from ai.schemas import ItemLLMResponse, TaskLLMResponse
+from typing import List
 import logging
 logger = logging.getLogger(__name__)
 
@@ -25,42 +26,47 @@ class MessageService:
             raise ValueError(f"неизвестная сущность {type}")
             
     @staticmethod
-    def make_save_new_entity(result: dict, user_id: int) -> Task | ShoppingItem | None:
+    def make_save_new_entity(result: dict, user_id: int) -> List[Task] | List[ShoppingItem] | None:
         if result["type"] == "tasks":
-            data = result["items"][0]
+            tasks=[]
+            for data in result["items"]:
 
-            val_data = TaskLLMResponse(**data)
+                val_data = TaskLLMResponse(**data)
 
-            task = Task(
-                user_id=user_id,
-                description=val_data.task,
-                category=val_data.category,
-                deadline_day=val_data.deadline_date,
-                deadline_time=val_data.deadline_time,
-                remind_time=val_data.remind_time,
-                remind_date=val_data.remind_date
-            )
-            logger.debug("создал задачу")
-            # Сохраняем в БД
-            TaskRepository.save_task(task)
-            logger.debug("сохранил задачу")
-            return task
+                task = Task(
+                    user_id=user_id,
+                    description=val_data.task,
+                    category=val_data.category,
+                    deadline_day=val_data.deadline_date,
+                    deadline_time=val_data.deadline_time,
+                    remind_time=val_data.remind_time,
+                    remind_date=val_data.remind_date
+                )
+                logger.debug("создал задачу")
+                # Сохраняем в БД
+                TaskRepository.save_task(task)
+                logger.debug("сохранил задачу")
+                tasks.append(task)
+            return tasks
         elif result["type"] == "shopping_list":
-            data = result["items"][0]
+            items = []
+            for data in result["items"]:
 
-            val_data = ItemLLMResponse(**data)
+                val_data = ItemLLMResponse(**data)
 
-            item = ShoppingItem(
-                user_id = user_id,
-                category = val_data.category,
-                item = val_data.item,
-                amount = val_data.amount, # передаю строку, но алхимия преобразует во float
-                unit = val_data.unit
-            )
-            logger.debug("создал покупку")
-            ShoppingRepository.save_shopping_item(item)
-            logger.debug("сохранил покупку")
-            return item
+                item = ShoppingItem(
+                    user_id = user_id,
+                    category = val_data.category,
+                    item = val_data.item,
+                    amount = val_data.amount, # передаю строку, но алхимия преобразует во float
+                    unit = val_data.unit
+                )
+                logger.debug("создал покупку")
+                ShoppingRepository.save_shopping_item(item)
+                logger.debug("сохранил покупку")
+                items.append(item)
+            
+            return items
         else:
             logger.error(f"попытка создать неизвестный тип! {result["type"]}")
             raise ValueError(f"попытка создать неизвестный тип! {result["type"]}")

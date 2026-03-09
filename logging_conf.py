@@ -2,7 +2,7 @@ import logging
 
 def setup_logging():
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG,
         format="%(levelname)s | %(name)s | %(filename)s:%(lineno)d | %(funcName)s | %(message)s"
     )
 

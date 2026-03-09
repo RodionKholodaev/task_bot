@@ -25,7 +25,7 @@ from services.message_service import MessageService
 from services.formater import Formater
 from services.task_service import TaskService
 from services.shopping_service import ShoppingService
-
+from typing import List
 from db.user_repository import UserRepository
 
 router = Router()
@@ -291,26 +291,37 @@ async def handle_reply(message: Message):
 
     result = await AiService.ai_edit(description, dt_string, user_id)
 
-
 # ------------------------- 
     # удаляем старую сущность (задачи или покупка)
     MessageService.delete_entity(id, type, user_id)
+    # сохраняем новую(ые) сущность(и)
+    entities = MessageService.make_save_new_entity(result, user_id)
 
-    entity = MessageService.make_save_new_entity(result, user_id)
+
+    if entities is None:
+
+        await message.answer("Какая-то ошибка. попробуйте отредактировать еще раз")
+        raise ValueError("Не получилось создать и сохранить сушность")
+
     if type =="tasks":
-        response_text = Formater.format_task(entity, make_task = False)
-        await message.answer(
-            response_text,
-            reply_markup=task_inline(entity.id),  # type: ignore
-            parse_mode="Markdown"
-        )
+
+        logger.info("попал в отправку задачи")
+        for entity in entities:
+            logger.info("попал в цикл отправки задач")
+            response_text = Formater.format_task(entity, make_task = False)
+            await message.answer(
+                response_text,
+                reply_markup=task_inline(entity.id),  # type: ignore
+                parse_mode="Markdown"
+            )
     elif type =="shopping_list":
-        response_text = Formater.format_shopping_list(entity)
-        await message.answer(
-            response_text,
-            reply_markup=shopping_inline(entity.id), # type: ignore
-            parse_mode="Markdown"
-        )
+        for entity in entities:
+            response_text = Formater.format_shopping_list(entity)
+            await message.answer(
+                response_text,
+                reply_markup=shopping_inline(entity.id), # type: ignore
+                parse_mode="Markdown"
+            )
 
 
     try:
@@ -348,7 +359,9 @@ async def new_task(message: Message):
     
 
     logger.debug(f"передаю в функцию c LLM время и дату: {dt_string}")
+    print("до обращения к нейросети в хендлере")
     data_message = await AiService.ai_parse(f"сегодня {dt_string}, {message.text}", user_id)
+    print("после")
 
     if isinstance(data_message, str):
         await message.answer(f"какая-то ошибка с нейросетью. Текст ошибки {data_message}")
@@ -359,25 +372,27 @@ async def new_task(message: Message):
     if not data_list:
         await message.answer("Не получилось выделить задачу из вашего текста. Пожалуйста напишите подробнее")
         return
-    
-    entity = MessageService.make_save_new_entity(data_message, user_id)
+    print("до сохранения объекта")
+    entitys = MessageService.make_save_new_entity(data_message, user_id)
+    if entitys is None:
+        raise ValueError("ошибка при сохранении сущности")
 
-    if isinstance(entity,Task):
+    if data_message["type"]=="tasks":
+            for entity in entitys:
+                response_text = Formater.format_task(entity, make_task = True)
 
-            response_text = Formater.format_task(entity, make_task = True)
+                await message.answer(
+                    response_text,
+                    reply_markup=task_inline(entity.id), # type: ignore
+                    parse_mode="Markdown"
+                )
 
-            await message.answer(
-                response_text,
-                reply_markup=task_inline(entity.id), # type: ignore
-                parse_mode="Markdown"
-            )
+    elif data_message["type"]=="shopping_list":
+            for entity in entitys:
+                response_text = Formater.format_shopping_list(entity)
 
-    elif isinstance(entity,ShoppingItem):
-
-            response_text = Formater.format_shopping_list(entity)
-
-            await message.answer(
-                response_text,
-                reply_markup=shopping_inline(entity.id), # type: ignore
-                parse_mode="Markdown"
-            )
+                await message.answer(
+                    response_text,
+                    reply_markup=shopping_inline(entity.id), # type: ignore
+                    parse_mode="Markdown"
+                )
