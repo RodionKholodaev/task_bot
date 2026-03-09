@@ -32,7 +32,14 @@ def skip_description_keyboard() -> ReplyKeyboardMarkup:
         resize_keyboard=True,
     )
 
-
+def subscription_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="💳 Информация о подписках"), KeyboardButton(text="⭐ Моя подписка")],
+            [KeyboardButton(text="⬅️ Назад")],
+        ],
+        resize_keyboard=True,
+    )
 def duration_category_keyboard() -> ReplyKeyboardMarkup:
     """Меню выбора категории по длительности"""
     return ReplyKeyboardMarkup(
@@ -91,13 +98,6 @@ PURCHASE_CATEGORY_MAP = {
     "Одежда":"clothes",
     "Другое":"other",
 }
-    # - grocery (продукты, напитки)
-    # - pharmacy (лекарства)
-    # - household (бытовая химия, товары для дома)
-    # - beauty (гигиена, косметика)
-    # - electronics (техника, батарейки)
-    # - clothes (одежда, обувь)
-    # - other (все остальное)
 
 # Маппинг для красивого вывода категорий пользователю
 READABLE_CATEGORIES = {

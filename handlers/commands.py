@@ -14,7 +14,8 @@ from keyboards import (
     task_inline, 
     shopping_inline, 
     PURCHASE_CATEGORY_MAP,
-    skip_description_keyboard
+    skip_description_keyboard,
+    subscription_keyboard
     )
 
 
@@ -274,6 +275,34 @@ async def save_description(message: Message, state: FSMContext):
     await message.answer("Описание сохранено ✅", reply_markup=profile_keyboard())
 
     await state.clear()
+
+@router.message(F.text == "💎 Подписка")
+async def subscription(message: Message):
+    await message.answer("Подписка:", reply_markup=subscription_keyboard())
+
+
+@router.message(F.text == "💳 Информация о подписках")
+async def price_list(message: Message):
+    await message.answer(
+        "📊 <b>Тарифы бота</b>\n\n"
+
+        "🆓 <b>Free</b>\n"
+        "Бесплатный тариф для повседневного использования\n"
+        "• до 50 задач\n"
+        "• до 50 покупок\n\n"
+
+        "💎 <b>Pro</b>\n"
+        "Полный доступ ко всем возможностям\n"
+        "• неограниченное количество задач\n"
+        "• неограниченное количество покупок\n\n"
+
+        "💰 <b>Стоимость Pro:</b> 99 ₽ / месяц\n\n"
+
+        "Вы можете пользоваться бесплатным тарифом "
+        "или оформить Pro для полного доступа 🚀",
+        parse_mode="HTML"
+    )
+
 
 @router.message(F.text.regexp(r"^[+-]?\d+\s\d{2}:\d{2}$"))
 async def save_settings(message: Message):
