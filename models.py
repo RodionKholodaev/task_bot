@@ -51,7 +51,7 @@ class UserSettings(Base):
     __tablename__ = "user_settings"
 
     user_id = Column(Integer, primary_key=True)
-    utc_offset = Column(Integer, nullable=False)
-    notify_time = Column(Time, nullable=False)
+    utc_offset = Column(Integer, nullable=True)
+    notify_time = Column(Time, nullable=True)
     self_description = Column(String(500), nullable=True) # нужно в коде добавить проверку на длину описания
 

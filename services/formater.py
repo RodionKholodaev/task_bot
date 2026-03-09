@@ -93,6 +93,8 @@ class Formater:
         settings = UserRepository.get_user_settings(user_id)
         if not settings:
             return None
+        elif settings.notify_time is None and settings.utc_offset is None:
+            return None
 
         # Часовой пояс пользователя
         user_tz = timezone(timedelta(hours=settings.utc_offset)) # type: ignore 

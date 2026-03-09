@@ -24,6 +24,9 @@ async def notification_loop():
             logger.info("Нет пользователей в боте. Некому делать напоминания")
             continue
         for u in users:
+            
+            if u.notify_time is None and u.utc_offset is None:
+                continue
 
             local_now = now_utc + timedelta(hours=u.utc_offset) # type: ignore
             local_date = local_now.date()

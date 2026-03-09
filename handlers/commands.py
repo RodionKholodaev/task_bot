@@ -13,7 +13,8 @@ from keyboards import (
     READABLE_CATEGORIES, 
     task_inline, 
     shopping_inline, 
-    PURCHASE_CATEGORY_MAP
+    PURCHASE_CATEGORY_MAP,
+    skip_description_keyboard
     )
 
 
@@ -212,32 +213,67 @@ async def settings(message: Message):
     )
 
 
-# @router.message(F.text == "📝 О себе")
-# async def self_description(message: Message, state: FSMContext):
-#     """ввод описания себя"""
+@router.message(F.text == "📝 О себе")
+async def self_description(message: Message, state: FSMContext):
+    """ввод описания себя"""
+    if message.from_user:
+        user_id = message.from_user.id
+    else:
+        raise ValueError("не найден пользователь")
+    
+    description = UserRepository.get_description(user_id)
+    if description:
+        await message.answer(
+            "Ваше текущее описание:\n"
+            f"{description}\n"
+            "Введите новое описание следующим сообщением"
+        )
+    else:
+        await message.answer("У вас пока нет описания себя")
+        
+    await state.set_state(ProfileState.waiting_for_description)
 
-#     await state.set_state(ProfileState.waiting_for_description)
+    await message.answer(
+        "Укажи то, чем нужно руководствоваться при анализе твоих задач.\n"
+        "Любая информация о тебе, которая может помочь сделать ответы чётче",
+        reply_markup=skip_description_keyboard()
+    )
 
-#     await message.answer(
-#         "Укажи то, чем нужно руководствоваться при анализе твоих задач.\n"
-#         "Любая информация о тебе, которая может помочь сделать ответы чётче"
-#     )
+@router.message(ProfileState.waiting_for_description, F.text == "❌ Не вводить")
+async def skip_description(message: Message, state: FSMContext):
+    await message.answer(
+        "Ок, описание не изменено 👍",
+        reply_markup=profile_keyboard()
+    )
 
-# @router.message(ProfileState.waiting_for_description)
-# async def save_description(message: Message, state: FSMContext):
+    await state.clear()
 
-#     description = message.text
-#     user_id = message.from_user.id
+@router.message(ProfileState.waiting_for_description)
+async def save_description(message: Message, state: FSMContext):
+    if message.from_user is None:
+        await message.answer("у сообщения нет пользователя")
+        return
+    
+    if message.text is None: 
+        await message.answer("в сообщении нет текста")
+        return
+    
+    description = message.text
+    user_id = message.from_user.id
 
-#     # запись в БД
-#     await UserService.update_description(
-#         user_id=user_id,
-#         description=description
-#     )
+    MAX_DESCRIPTION_SIZE = 6*100
+    if len(description)> MAX_DESCRIPTION_SIZE:
+        await message.answer("Слишком длинное описание. Максимальная длинна 600 символов")
+        return
+    # запись в БД
+    UserRepository.update_description(
+        user_id=user_id,
+        description=description
+    )
 
-#     await message.answer("Описание сохранено ✅")
+    await message.answer("Описание сохранено ✅", reply_markup=profile_keyboard())
 
-#     await state.clear()
+    await state.clear()
 
 @router.message(F.text.regexp(r"^[+-]?\d+\s\d{2}:\d{2}$"))
 async def save_settings(message: Message):

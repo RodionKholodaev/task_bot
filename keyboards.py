@@ -24,6 +24,15 @@ def profile_keyboard() -> ReplyKeyboardMarkup:
         resize_keyboard=True,
     )
 
+def skip_description_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="❌ Не вводить")]
+        ],
+        resize_keyboard=True,
+    )
+
+
 def duration_category_keyboard() -> ReplyKeyboardMarkup:
     """Меню выбора категории по длительности"""
     return ReplyKeyboardMarkup(
