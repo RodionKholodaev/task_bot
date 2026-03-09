@@ -78,10 +78,11 @@ async def back(message: Message):
 @router.message(F.text.in_(TASK_CATEGORY_MAP))
 async def show_task_by_category(message: Message):
     """Показать задачи по выбранной категории"""
+    if message.from_user is not None:
+        user_id = message.from_user.id
+    else: raise ValueError("сообщение из неизвестного источника")
     
-    user_id = message.from_user.id
-
-    tasks = TaskService.get_category_task(user_id, message.text)
+    tasks = TaskService.get_category_task(user_id, message.text) # type: ignore
 
     if not tasks:
         await message.answer("Задач нет")
@@ -93,15 +94,18 @@ async def show_task_by_category(message: Message):
 
         await message.answer(
             answer,
-            reply_markup=task_inline(t.id)
+            reply_markup=task_inline(t.id) # type: ignore
         )
 
 
 @router.message(F.text.in_(PURCHASE_CATEGORY_MAP))
 async def show_item_by_category(message: Message):
     """Показать покупки по выбранной категории"""
-    
-    items = ShoppingService.get_category_item(message.from_user.id, message.text)
+    if message.from_user is not None:
+        user_id = message.from_user.id
+    else: raise ValueError("сообщение из неизвестного источника")
+
+    items = ShoppingService.get_category_item(user_id, message.text) # type: ignore
 
     if not items:
         await message.answer("Покупок нет")
@@ -113,14 +117,18 @@ async def show_item_by_category(message: Message):
 
         await message.answer(
             answer,
-            reply_markup=shopping_inline(i.id),
+            reply_markup=shopping_inline(i.id), # type: ignore
             parse_mode="Markdown"
         )
 
 #  вывод задач на день (вспомогательная функция)
 async def show_tasks_for_day(message: Message, day_shift: int):
 
-    tasks = TaskService.get_day_tasks(message.from_user.id, day_shift)
+    if message.from_user is not None:
+        user_id = message.from_user.id
+    else: raise ValueError("сообщение из неизвестного источника")
+
+    tasks = TaskService.get_day_tasks(user_id, day_shift)
 
     if not tasks:
         await message.answer("Задач нет 🎉")
@@ -132,7 +140,7 @@ async def show_tasks_for_day(message: Message, day_shift: int):
 
         await message.answer(
             answer,
-            reply_markup=task_inline(t.id)
+            reply_markup=task_inline(t.id) # type: ignore
         )
 
 @router.message(F.text == "📅 Сегодня")
@@ -147,7 +155,12 @@ async def tomorrow(message: Message):
 @router.message(F.text == "📆 Неделя")
 async def week(message: Message):
     """Показать задачи на неделю"""
-    tasks = TaskService.get_week_task(message.from_user.id)
+
+    if message.from_user is not None:
+        user_id = message.from_user.id
+    else: raise ValueError("сообщение из неизвестного источника")
+
+    tasks = TaskService.get_week_task(user_id)
     if not tasks:
         await message.answer("На неделю задач нет 🎉")
         return
@@ -158,7 +171,7 @@ async def week(message: Message):
         
         await message.answer(
             answer,
-            reply_markup=task_inline(t.id)
+            reply_markup=task_inline(t.id) # type: ignore
         )
 
 
@@ -166,7 +179,11 @@ async def week(message: Message):
 @router.message(F.text == "📋 Все задачи")
 async def all_tasks(message: Message):
     """Показать все задачи"""
-    tasks = TaskService.get_all_tasks(message.from_user.id)
+    if message.from_user is not None:
+        user_id = message.from_user.id
+    else: raise ValueError("сообщение из неизвестного источника")
+
+    tasks = TaskService.get_all_tasks(user_id)
     if not tasks:
         await message.answer("Задач нет")
         return
@@ -177,7 +194,7 @@ async def all_tasks(message: Message):
         
         await message.answer(
             answer,
-            reply_markup=task_inline(t.id)
+            reply_markup=task_inline(t.id) # type: ignore
             )
         
 @router.message(F.text == "🛒 Покупки")
@@ -225,10 +242,13 @@ async def settings(message: Message):
 @router.message(F.text.regexp(r"^[+-]?\d+\s\d{2}:\d{2}$"))
 async def save_settings(message: Message):
     """Сохранить пользовательские настройки"""
-    
-    offset_str, time_str = message.text.split()
+    if message.from_user is not None:
+        user_id = message.from_user.id
+    else: raise ValueError("сообщение из неизвестного источника")
+
+    offset_str, time_str = message.text.split() # type: ignore
     UserRepository.upsert_user_settings(
-        message.from_user.id,
+        user_id,
         int(offset_str),
         datetime.strptime(time_str, "%H:%M").time()
     )
@@ -241,14 +261,20 @@ async def handle_reply(message: Message):
     """
     Обработчик для ответов на сообщения бота, чтобы редактировать задачи и покупки.
     """
+    if message.from_user is not None:
+        user_id = message.from_user.id
+    else: raise ValueError("сообщение из неизвестного источника")
 
-    user_id = message.from_user.id
     dt_string = Formater.get_user_time(user_id)
 
     if not dt_string:
         await message.answer("Часовой пояс не найден, добавьте его в настройках")
+        return
 
-    entity_text = message.reply_to_message.text
+    if message.reply_to_message is not None:
+        entity_text = message.reply_to_message.text
+    else: raise ValueError("нет текста в сообщении")
+
 
     id_type = Parser.get_id_info(entity_text)
 
@@ -256,7 +282,12 @@ async def handle_reply(message: Message):
     id = id_type["id"]
     request = message.text
 
+    if request is None:
+        await message.answer("введите текст для редактирования")
+        return
+
     description = Formater.make_description(id, type, dt_string,request)
+    if description is None: raise ValueError("почему-то не получилось создать описание")
 
     result = await AiService.ai_edit(description, dt_string, user_id)
 
@@ -270,14 +301,14 @@ async def handle_reply(message: Message):
         response_text = Formater.format_task(entity, make_task = False)
         await message.answer(
             response_text,
-            reply_markup=task_inline(entity.id),
+            reply_markup=task_inline(entity.id),  # type: ignore
             parse_mode="Markdown"
         )
     elif type =="shopping_list":
         response_text = Formater.format_shopping_list(entity)
         await message.answer(
             response_text,
-            reply_markup=shopping_inline(entity.id),
+            reply_markup=shopping_inline(entity.id), # type: ignore
             parse_mode="Markdown"
         )
 
@@ -295,8 +326,14 @@ async def handle_reply(message: Message):
 async def new_task(message: Message):
     """Обработчик добавления новой задачи"""
     logger.debug(f"поступило сообщение {message.text}")
+    if message.from_user is not None:
+        user_id = message.from_user.id
+    else: raise ValueError("сообщение из неизвестного источника")
 
-    user_id = message.from_user.id
+    if message.text is None:
+        await message.answer("введите текст")
+        return
+
     dt_string = Formater.get_user_time(user_id)
 
     if not dt_string:
@@ -331,7 +368,7 @@ async def new_task(message: Message):
 
             await message.answer(
                 response_text,
-                reply_markup=task_inline(entity.id),
+                reply_markup=task_inline(entity.id), # type: ignore
                 parse_mode="Markdown"
             )
 
@@ -341,6 +378,6 @@ async def new_task(message: Message):
 
             await message.answer(
                 response_text,
-                reply_markup=shopping_inline(entity.id), 
+                reply_markup=shopping_inline(entity.id), # type: ignore
                 parse_mode="Markdown"
             )

@@ -47,7 +47,7 @@ class ShoppingRepository:
             item = s.query(ShoppingItem).filter_by(id=item_id, user_id=user_id).first()
             if not item:
                 return False
-            item.is_bought = True
+            item.is_bought = True # type: ignore
             s.commit()
             return True
         finally:

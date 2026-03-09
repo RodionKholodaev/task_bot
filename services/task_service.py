@@ -11,10 +11,10 @@ class TaskService:
     def get_day_tasks(user_id: int, day_shift: int):
         logger.info("получаем задачи на день")
         settings = UserRepository.get_user_settings(user_id)
-        offset = settings.utc_offset if settings else 0
+        offset = settings.utc_offset if settings else 0 
 
         target_date = (
-            datetime.utcnow() + timedelta(days=day_shift, hours=offset)
+            datetime.utcnow() + timedelta(days=day_shift, hours=offset) # type: ignore 
         ).date()
 
         return TaskRepository.get_tasks_for_day(user_id, target_date)
@@ -25,7 +25,7 @@ class TaskService:
         settings = UserRepository.get_user_settings(user_id)
         offset = settings.utc_offset if settings else 0
 
-        start = (datetime.utcnow() + timedelta(hours=offset)).date()
+        start = (datetime.utcnow() + timedelta(hours=offset)).date() # type: ignore 
         end = start + timedelta(days=7)
 
         tasks = TaskRepository.get_tasks_week(user_id, start, end)

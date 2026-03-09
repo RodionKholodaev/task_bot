@@ -95,7 +95,7 @@ class Formater:
             return None
 
         # Часовой пояс пользователя
-        user_tz = timezone(timedelta(hours=settings.utc_offset))
+        user_tz = timezone(timedelta(hours=settings.utc_offset)) # type: ignore 
         user_datetime = datetime.now(user_tz)
 
         # День недели
@@ -113,11 +113,11 @@ class Formater:
 
         logger.info("формирую сообщение о создании/редактировании задачи")
 
-        cat_text = READABLE_CATEGORIES.get(task.category, task.category)
-        date_text = task.deadline_day.strftime("%d-%m-%Y") if task.deadline_day else 'Нет'
-        time = task.deadline_time.strftime("%H:%M") if task.deadline_time else 'Нет'
-        remind_date_str=task.remind_date.strftime("%d-%m-%Y") if task.remind_date else 'Нет'
-        remind_time = task.remind_time.strftime("%H:%M") if task.remind_time else 'Нет'
+        cat_text = READABLE_CATEGORIES.get(task.category) # type: ignore 
+        date_text = task.deadline_day.strftime("%d-%m-%Y") if task.deadline_day else 'Нет' # type: ignore 
+        time = task.deadline_time.strftime("%H:%M") if task.deadline_time else 'Нет' # type: ignore 
+        remind_date_str=task.remind_date.strftime("%d-%m-%Y") if task.remind_date else 'Нет' # type: ignore 
+        remind_time = task.remind_time.strftime("%H:%M") if task.remind_time else 'Нет' # type: ignore 
 
         status = "добавлена" if make_task else "обновлена"
         response_text = (
@@ -139,8 +139,8 @@ class Formater:
         logger.info("формирую сообщение о создании/редактировании покупки")
 
         # предварительная подготовка данных (чтобы не было 1.0 там, где не нужно)
-        amount_val = int(item.amount) if item.amount and item.amount.is_integer() else item.amount
-        quantity_text = f"{amount_val} {item.unit}" if item.amount else "Не указано"
+        amount_val = int(item.amount) if item.amount and item.amount.is_integer() else item.amount # type: ignore 
+        quantity_text = f"{amount_val} {item.unit}" if item.amount else "Не указано" # type: ignore
 
         # словарь для красивого отображения категорий (опционально)
         categories_map = {
@@ -152,14 +152,14 @@ class Formater:
             "clothes": "Одежда",
             "other": "Другое"
         }
-        cat_display = categories_map.get(item.category, item.category or "Не указана")
+        cat_display = categories_map.get(item.category, item.category or "Не указана") # type: ignore 
 
         response_text = (
             f"🛒 **Товар добавлен в список!**\n\n"
             f"📦 **Что:** {item.item}\n"
             f"🔢 **Кол-во:** {quantity_text}\n"
             f"📁 **Категория:** {cat_display}\n"
-            f"✅ **Статус:** {'Куплено' if item.is_bought else 'В списке'}\n\n"
+            f"✅ **Статус:** {'Куплено' if item.is_bought is not None else 'В списке'}\n\n"
             f"🆔 ID товара: {item.id}"
         )
         
@@ -170,8 +170,8 @@ class Formater:
     @staticmethod
     def format_category_item(item: ShoppingItem) -> str:
         logger.info("определяю что хочет изменить пользователь")
-        amount_val = int(item.amount) if item.amount and item.amount.is_integer() else item.amount
-        quantity_text = f"{amount_val} {item.unit}" if item.amount else ""
+        amount_val = int(item.amount) if item.amount and item.amount.is_integer() else item.amount # type: ignore 
+        quantity_text = f"{amount_val} {item.unit}" if item.amount else "" # type: ignore 
 
         response_text = (
             f"*{item.item} {quantity_text}*\n"
@@ -185,7 +185,7 @@ class Formater:
         if is_day:
             deadline_time = (
                 task.deadline_time.strftime('%H:%M')
-                if task.deadline_time else ""
+                if task.deadline_time is not None else ""
             )
 
             answer = (
@@ -193,8 +193,8 @@ class Formater:
                 f"ID задачи: {task.id}"
             )
         else:
-            deadline_day = task.deadline_day.strftime('%d-%m-%Y') if task.deadline_day else ''
-            deadline_time = task.deadline_time.strftime('%H-%M') if task.deadline_time else ''
+            deadline_day = task.deadline_day.strftime('%d-%m-%Y') if task.deadline_day is not None else ''
+            deadline_time = task.deadline_time.strftime('%H-%M') if task.deadline_time is not None else ''
 
             answer = (
                 f" {deadline_day} {deadline_time} {task.description}\n"

@@ -94,7 +94,7 @@ class TaskRepository:
             task = s.query(Task).filter_by(id=task_id, user_id=user_id).first()
             if not task:
                 return False
-            task.is_completed = True
+            task.is_completed = True # type: ignore
             s.commit()
             return True
         finally:

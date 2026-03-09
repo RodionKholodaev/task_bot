@@ -9,6 +9,8 @@ import logging
 from aiogram import Bot, Dispatcher
 
 from config import BOT_TOKEN
+if not BOT_TOKEN: raise ValueError("нет токена бота")
+
 from db.database import init_db
 from handlers.commands import router as commands_router
 from handlers.callbacks import router as callbacks_router

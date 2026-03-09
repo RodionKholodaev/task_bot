@@ -1,11 +1,11 @@
 from datetime import time
 from models import UserSettings
 from db.database import get_session
-
+from typing import List
 class UserRepository:
 
     @staticmethod
-    def get_all_users() -> UserSettings | None:
+    def get_all_users() -> List[UserSettings] | None:
         s=get_session()
         try:
             return s.query(UserSettings).all()
@@ -28,8 +28,8 @@ class UserRepository:
         try:
             settings = s.query(UserSettings).filter_by(user_id=user_id).first()
             if settings:
-                settings.utc_offset = utc_offset
-                settings.notify_time = notify_time
+                settings.utc_offset = utc_offset # type: ignore
+                settings.notify_time = notify_time # type: ignore
             else:
                 s.add(UserSettings(
                     user_id=user_id,

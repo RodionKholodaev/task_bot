@@ -42,7 +42,8 @@ async def ask_llm(description: str, system_msg:str) -> dict:
             )
             print("после получения ответа")
 
-            content: str = response.choices[0].message.content
+            content = response.choices[0].message.content
+            assert content is not None
             data = json.loads(content)
 
             print(data)
@@ -55,7 +56,7 @@ async def ask_llm(description: str, system_msg:str) -> dict:
             error=e
             await asyncio.sleep(0.5)
 
-    return error
+    return {"error": error}
 
 async def parse_text(description: str) -> dict: 
     print("попал в parse_text")
