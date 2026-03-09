@@ -586,6 +586,7 @@ async def edit_entity(description: str, date_and_time: str) -> dict:
     ]
     }}
 
+
     пример 7 (добавить единицы измерения):
     Сегодня Friday, 2026-02-27 22:19. Вот моя покупка:
     {{
@@ -661,6 +662,38 @@ async def edit_entity(description: str, date_and_time: str) -> dict:
         {{
         "category": "other",
         "item": "шампунь",
+        "amount": "",
+        "unit": ""
+        }}
+    ]
+    }}
+    пример 10 (разделить на части):
+    Сегодня Friday, 2026-02-27 22:19. Вот моя покупка:
+    {{
+    "type": "shopping_list",
+    "items": [
+        {{
+        "category": "other",
+        "item": "стихи мандельштама и пушкина",
+        "amount": "",
+        "unit": ""
+        }}
+    ]
+    }}
+    Вот моя просьба: раздели
+    Твой ответ:
+    {{
+    "type": "shopping_list",
+    "items": [
+        {{
+        "category": "other",
+        "item": "стихи мандельштама",
+        "amount": "",
+        "unit": ""
+        }},
+        {{
+        "category": "other",
+        "item": "стихи пушкина",
         "amount": "",
         "unit": ""
         }}
