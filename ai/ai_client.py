@@ -313,7 +313,7 @@ async def parse_text(description: str) -> dict:
     ]
     }
 
-    ПРИМЕР 2:
+    ПРИМЕР 3:
     ввод:
     сегодня Monday, 2026-02-10 12:00, мне нужно купить соду яйца десяток половая швабра наушники
 
@@ -342,6 +342,23 @@ async def parse_text(description: str) -> dict:
         {
         "category": "electronics",
         "item": "наушники",
+        "amount": "",
+        "unit": ""
+        }
+    ]
+    }
+
+    ПРИМЕР 4:
+    ввод:
+    сегодня Monday, 2026-02-10 12:00, нужно купить квартиру
+
+    ответ:
+    {
+    "type": "shopping_list",
+    "items": [
+        {
+        "category": "other",
+        "item": "квартира",
         "amount": "",
         "unit": ""
         }
@@ -696,6 +713,62 @@ async def edit_entity(description: str, date_and_time: str) -> dict:
         "item": "стихи пушкина",
         "amount": "",
         "unit": ""
+        }}
+    ]
+    }}
+    пример 11 (изменить задачу на покупку):
+    Сегодня Friday, 2026-02-27 22:19. Вот моя задача:
+    {{
+    "type": "tasks",
+    "items": [
+        {{
+        "category": "short_30",
+        "date": "",
+        "time": "",
+        "remind_date": "",
+        "remind_time": "",
+        "task": "купить сборник стихов"
+        }}
+    ]
+    }}
+    Вот моя просьба: покупка
+    Твой ответ:
+    {{
+    "type": "shopping_list",
+    "items": [
+        {{
+        "category": "other",
+        "item": "сборник стихов",
+        "amount": "",
+        "unit": ""
+        }}
+    ]
+    }}
+    пример 12 (изменить покупку на задачу):
+    Сегодня Friday, 2026-02-27 22:19. Вот моя задача:
+    {{
+    "type": "shopping_list",
+    "items": [
+        {{
+        "category": "other",
+        "item": "купить абонемент в спорт зал",
+        "amount": "",
+        "unit": ""
+        }}
+    ]
+    }}
+    Вот моя просьба: задача
+    Твой ответ:
+    {{
+    "type": "tasks",
+    "items": [
+        {{
+        "category": "short_120",
+        "date": "",
+        "time": "",
+        "remind_date": "",
+        "remind_time": "",
+        "task": "купить абонемент в спорт зал"
         }}
     ]
     }}
