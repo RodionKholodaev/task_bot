@@ -9,7 +9,7 @@ def new_main_keyboard() -> ReplyKeyboardMarkup:
             [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="🌅 Завтра")],
             [ KeyboardButton(text="📆 Неделя"), KeyboardButton(text="📋 Все задачи")],
             [KeyboardButton(text="⏱ По длительности"), KeyboardButton(text="🛒 Покупки")],
-            [KeyboardButton(text="🧑 Профиль")],
+            [KeyboardButton(text="🧑 Профиль"), KeyboardButton(text="💎 Подписка")]
         ],
         resize_keyboard=True,
     )
@@ -19,7 +19,7 @@ def profile_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📝 О себе"), KeyboardButton(text="⏰ Настройка уведомлений")],
-            [ KeyboardButton(text="💎 Подписка"), KeyboardButton(text="⬅️ Назад")],
+            [ KeyboardButton(text="📊 Статистика"), KeyboardButton(text="⬅️ Назад")]
         ],
         resize_keyboard=True,
     )
@@ -32,14 +32,6 @@ def skip_description_keyboard() -> ReplyKeyboardMarkup:
         resize_keyboard=True,
     )
 
-def subscription_keyboard() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="💳 Информация о подписках"), KeyboardButton(text="⭐ Моя подписка")],
-            [KeyboardButton(text="⬅️ Назад")],
-        ],
-        resize_keyboard=True,
-    )
 def duration_category_keyboard() -> ReplyKeyboardMarkup:
     """Меню выбора категории по длительности"""
     return ReplyKeyboardMarkup(
@@ -63,6 +55,11 @@ def purchase_category_keyboard() -> ReplyKeyboardMarkup:
         resize_keyboard=True,
     )
 
+def buy_inline() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(text="Оформить Pro", callback_data="buy_pro_subscription")
+    return kb.as_markup()
+    
 
 def task_inline(task_id: int) -> InlineKeyboardMarkup:
     """Встроенные кнопки для задачи (выполнено/удалить)"""

@@ -4,6 +4,7 @@ from db.database import get_session
 from typing import List
 class UserRepository:
 
+
     @staticmethod
     def get_all_users() -> List[UserSettings] | None:
         s=get_session()

@@ -15,7 +15,7 @@ from keyboards import (
     shopping_inline, 
     PURCHASE_CATEGORY_MAP,
     skip_description_keyboard,
-    subscription_keyboard
+    buy_inline
     )
 
 
@@ -27,9 +27,11 @@ from services.message_service import MessageService
 from services.formater import Formater
 from services.task_service import TaskService
 from services.shopping_service import ShoppingService
-from typing import List
-from db.user_repository import UserRepository
 
+from db.user_repository import UserRepository
+from db.payments_repository import PaymentsRepository
+
+from config import YOOKASSA_TOKEN
 router = Router()
 
 import logging
@@ -44,6 +46,12 @@ class ProfileState(StatesGroup):
 @router.message(CommandStart())
 async def start(message: Message):
     """Обработчик команды /start"""
+    if message.from_user is None:
+        raise ValueError("У сообщения нет пользователя")
+    user_id = message.from_user.id
+    
+    PaymentsRepository.get_started(user_id)
+        
     await message.answer(
         "Привет! 👋 Я твой умный личный менеджер.\n\n"
         "**Что я умею:**\n\n"
@@ -278,30 +286,47 @@ async def save_description(message: Message, state: FSMContext):
 
 @router.message(F.text == "💎 Подписка")
 async def subscription(message: Message):
-    await message.answer("Подписка:", reply_markup=subscription_keyboard())
+    if message.from_user is None:
+        raise ValueError("Сообщение не от пользователя")
+    else:
+        user_id = message.from_user.id
+        user_sub = PaymentsRepository.get_user_sub(user_id)
+
+        if user_sub is None:
+            await message.answer("Вас пока нет в нашей базе данных\n Создайте задачу")
+            return
+
+        ans, is_pro = Formater.format_sub_info(user_sub)
+        
+        if is_pro:
+            await message.answer(ans)
+            return
+        else:
+            await message.answer(ans, reply_markup=buy_inline())
 
 
-@router.message(F.text == "💳 Информация о подписках")
-async def price_list(message: Message):
-    await message.answer(
-        "📊 <b>Тарифы бота</b>\n\n"
 
-        "🆓 <b>Free</b>\n"
-        "Бесплатный тариф для повседневного использования\n"
-        "• до 50 задач\n"
-        "• до 50 покупок\n\n"
+# @router.message(F.text == "💳 Информация о подписках")
+# async def price_list(message: Message):
+#     await message.answer(
+#         "📊 <b>Тарифы бота</b>\n\n"
 
-        "💎 <b>Pro</b>\n"
-        "Полный доступ ко всем возможностям\n"
-        "• неограниченное количество задач\n"
-        "• неограниченное количество покупок\n\n"
+#         "🆓 <b>Free</b>\n"
+#         "Бесплатный тариф для повседневного использования\n"
+#         "• до 50 задач\n"
+#         "• до 50 покупок\n\n"
 
-        "💰 <b>Стоимость Pro:</b> 99 ₽ / месяц\n\n"
+#         "💎 <b>Pro</b>\n"
+#         "Полный доступ ко всем возможностям\n"
+#         "• неограниченное количество задач\n"
+#         "• неограниченное количество покупок\n\n"
 
-        "Вы можете пользоваться бесплатным тарифом "
-        "или оформить Pro для полного доступа 🚀",
-        parse_mode="HTML"
-    )
+#         "💰 <b>Стоимость Pro:</b> 99 ₽ / месяц\n\n"
+
+#         "Вы можете пользоваться бесплатным тарифом "
+#         "или оформить Pro для полного доступа 🚀",
+#         parse_mode="HTML"
+#     )
 
 
 @router.message(F.text.regexp(r"^[+-]?\d+\s\d{2}:\d{2}$"))
@@ -319,7 +344,50 @@ async def save_settings(message: Message):
     )
     await message.answer("Настройки сохранены ✅", reply_markup=new_main_keyboard())
 
+# from aiogram.types import LabeledPrice
+from models import SubscriptionTypes
 
+# @router.message(F.text == "Купить подписку")
+# async def buy(message: Message):
+
+#     prices = [LabeledPrice(label="Подписка", amount=99*100)]
+
+#     await message.answer_invoice(
+#         title="Подписка",
+#         description="Подписка на бота",
+#         payload="subscription",
+#         provider_token=YOOKASSA_TOKEN,
+#         currency="RUB",
+#         prices=prices
+#     )
+
+# необходимо чтобы сработал successful_payment
+@router.pre_checkout_query()
+async def process_pre_checkout_query(pre_checkout_query):
+    await pre_checkout_query.answer(ok=True)
+
+@router.message(F.successful_payment)
+async def successful_payment(message: Message):
+
+    if message.from_user is None: 
+        raise ValueError("у сообщения нет пользователя")
+    payment = message.successful_payment
+    if payment is None:
+        raise ValueError("Не удается получить платеж от телеграмм")
+    try:
+        tg_payment_id = payment.telegram_payment_charge_id
+        provider_payment_id = payment.provider_payment_charge_id
+        user_id = message.from_user.id
+        amount = payment.total_amount/100 # изначально в копейках
+
+        PaymentsRepository.save_payment(user_id, tg_payment_id, provider_payment_id, amount)
+        PaymentsRepository.change_user_sub(user_id, SubscriptionTypes.PREMIUM)
+
+        # выдать подписку
+        await message.answer("Оплата прошла успешно!")
+    except:
+        await message.answer("Приозошла ошибка при обновлении подписки. Пожалуйста напишите в поддержку")
+        
 
 @router.message(F.reply_to_message)
 async def handle_reply(message: Message):
@@ -461,3 +529,4 @@ async def new_task(message: Message):
                     reply_markup=shopping_inline(entity.id), # type: ignore
                     parse_mode="Markdown"
                 )
+

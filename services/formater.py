@@ -4,6 +4,7 @@ from db.user_repository import UserRepository
 from db.task_repository import TaskRepository
 from db.shopping_repository import ShoppingRepository
 from datetime import datetime, timedelta, timezone
+from models import SubscriptionTypes
 
 import logging 
 logger = logging.getLogger(__name__)
@@ -203,3 +204,22 @@ class Formater:
                 f"ID задачи: {task.id}"
                 )
         return answer
+    
+    @staticmethod
+    def format_sub_info(sub: str) -> tuple[str, bool]:
+        if sub == SubscriptionTypes.FREE:
+            ans = (
+                "У вас подписка free\n"
+                "Вы можете хранить максимум 50 покупок и 50 задач\n"
+                "Оформите Pro, чтобы не иметь ограничений в использовании сервиса"
+            )
+            return (ans, False)
+        elif sub == SubscriptionTypes.PREMIUM:
+            ans = (
+                "У вас подписка Pro\n"
+                "Вы можете пользоваться сервисом без ограничений"
+            )
+            return (ans, True)
+        else:
+            raise ValueError("Неизвестный тип подписки")
+

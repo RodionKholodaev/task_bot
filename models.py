@@ -51,17 +51,26 @@ class SubscriptionTypes(enum.Enum):
     FREE = "free"
     PREMIUM = "premium"
 
+
+print(SubscriptionTypes.FREE)
+
 class UserSettings(Base):
     """Модель пользователя"""
     __tablename__ = "user_settings"
 
     user_id = Column(Integer, primary_key=True)
-    utc_offset = Column(Integer, nullable=True)
-    notify_time = Column(Time, nullable=True)
+    utc_offset = Column(Integer, nullable=False)
+    notify_time = Column(Time, nullable=False)
     self_description = Column(String(500), nullable=True) 
 
-    task_count = Column(Integer, default=0) # нужно увеличивать и уменьшать кода нужно
-    item_count = Column(Integer, default=0) # нужно увеличивать и уменьшать кода нужно
+
+class UserAccount(Base):
+
+    __tablename__="user_account"
+
+    user_id = Column(Integer, primary_key=True)
+    task_count = Column(Integer, default=50) # нужно увеличивать и уменьшать кода нужно
+    item_count = Column(Integer, default=50) # нужно увеличивать и уменьшать кода нужно
 
     subscription = Column(Enum(SubscriptionTypes),default=SubscriptionTypes.FREE, nullable=False )
     subscription_until = Column(DateTime, nullable=True)
@@ -71,15 +80,13 @@ class Payment(Base):
     __tablename__ = "payments"
 
     id = Column(Integer, primary_key=True)
-
     user_id = Column(Integer)
-
     amount = Column(Integer)
-
     status = Column(String)
-
-    payment_provider_id = Column(String)
-
+    tg_payment_id = Column(String)
+    provider_payment_id = Column(String)
+    
     created_at = Column(DateTime)
-
     expires_at = Column(DateTime) # когда подписка истекает
+
+

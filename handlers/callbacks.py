@@ -39,3 +39,28 @@ async def delete_item(callback: CallbackQuery):
     if ShoppingRepository.delete_item(item_id, callback.from_user.id):
         await callback.message.delete() # type: ignore
     await callback.answer()
+
+
+from aiogram import F
+from aiogram.types import CallbackQuery, LabeledPrice
+from config import YOOKASSA_TOKEN
+
+@router.callback_query(F.data == "buy_pro_subscription")
+async def process_buy_callback(callback: CallbackQuery):
+    prices = [LabeledPrice(label="Подписка", amount=99*100)]
+
+    if callback.message is None:
+        raise ValueError("Что-то не то при попытке купить подписку")
+
+    # Отправляем инвойс
+    await callback.message.answer_invoice(
+        title="Подписка",
+        description="Подписка на бота",
+        payload="subscription",
+        provider_token=YOOKASSA_TOKEN,
+        currency="RUB",
+        prices=prices
+    )
+    
+    # Обязательно отвечаем на колбэк, чтобы убрать "часики" на кнопке
+    await callback.answer()
