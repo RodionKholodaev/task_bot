@@ -49,7 +49,9 @@ class PaymentsRepository:
                 amount = amount,
                 status = "succeeded",
                 tg_payment_id = tg_payment_id,
-                provider_payment_id = provider_payment_id
+                provider_payment_id = provider_payment_id,
+                created_at = datetime.now(),
+                expires_at = datetime.now() + timedelta(days=30)
             )
             s.add(payment)
             s.commit()
