@@ -31,7 +31,6 @@ from services.shopping_service import ShoppingService
 from db.user_repository import UserRepository
 from db.payments_repository import PaymentsRepository
 
-from config import YOOKASSA_TOKEN
 router = Router()
 
 import logging
@@ -39,6 +38,10 @@ logger = logging.getLogger(__name__)
 
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
+
+# middleware
+from middlewares.limits import TaskLimitMiddleware
+router.message.middleware(TaskLimitMiddleware())
 
 class ProfileState(StatesGroup):
     waiting_for_description = State()
@@ -466,7 +469,7 @@ async def handle_reply(message: Message):
 
 # --------------------------
 
-@router.message()
+@router.message(flags={"long_operation": "check_limits"})
 async def new_task(message: Message):
     """Обработчик добавления новой задачи"""
     logger.debug(f"поступило сообщение {message.text}")

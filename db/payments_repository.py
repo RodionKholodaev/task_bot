@@ -1,12 +1,9 @@
 from typing import List
 from models import Payment, UserAccount, SubscriptionTypes, UserSettings
 from db.database import get_session
-
 from datetime import datetime, timedelta
 
 # значения по умолчанию
-MAX_TASK_COUNT = 50
-MAX_ITEM_COUNT = 50
 UTC_OFFSET = 3
 NOTIFY_TIME = datetime.strptime("08:00", "%H:%M").time()
 
@@ -20,8 +17,8 @@ class PaymentsRepository:
         if user_account is None:
             user_acc = UserAccount(
                 user_id = user_id,
-                task_count = MAX_TASK_COUNT,
-                item_count = MAX_ITEM_COUNT,
+                task_count = 0,
+                item_count = 0,
                 subscription = SubscriptionTypes.FREE.name
             )
             s.add(user_acc)
@@ -95,5 +92,30 @@ class PaymentsRepository:
                 return sub # type: ignore
             else:
                 return None
+        finally:
+            s.close()
+
+    @staticmethod
+    def get_user_account(user_id: int) -> UserAccount:
+        s = get_session()
+        try:
+            user_acc = s.query(UserAccount).filter_by(user_id = user_id).first()
+            return user_acc
+        finally:
+            s.close()
+
+# Это не самый надежный код. Нет атомарности
+    @staticmethod
+    def increment_counter(user_id: int, field: str):
+        s = get_session()
+        try:
+            user_acc = s.query(UserAccount).filter_by(user_id = user_id).first()
+            if user_acc is None: raise ValueError("Пользователь не найден")
+
+            if field == "tasks":
+                user_acc.task_count += 1 # type: ignore
+            elif field == "shopping_list":
+                user_acc.item_count += 1 # type: ignore
+            s.commit()
         finally:
             s.close()

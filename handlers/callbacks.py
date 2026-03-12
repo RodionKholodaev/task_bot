@@ -1,8 +1,9 @@
 from aiogram import Router, F
-from aiogram.types import CallbackQuery
-
+from aiogram.types import CallbackQuery, LabeledPrice
 from db.task_repository import TaskRepository 
 from db.shopping_repository import ShoppingRepository 
+from config import YOOKASSA_TOKEN
+
 # роутер для подключения к файлу бота
 router = Router()
 
@@ -41,9 +42,6 @@ async def delete_item(callback: CallbackQuery):
     await callback.answer()
 
 
-from aiogram import F
-from aiogram.types import CallbackQuery, LabeledPrice
-from config import YOOKASSA_TOKEN
 
 @router.callback_query(F.data == "buy_pro_subscription")
 async def process_buy_callback(callback: CallbackQuery):

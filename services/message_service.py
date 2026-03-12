@@ -1,6 +1,7 @@
 import re
 from db.task_repository import TaskRepository
 from db.shopping_repository import ShoppingRepository
+from db.payments_repository import PaymentsRepository
 from .formater import Formater
 from .parser import Parser
 from models import Task, ShoppingItem
@@ -30,7 +31,7 @@ class MessageService:
         if result["type"] == "tasks":
             tasks=[]
             for data in result["items"]:
-
+                PaymentsRepository.increment_counter(user_id, field="tasks")
                 val_data = TaskLLMResponse(**data)
 
                 task = Task(
@@ -51,7 +52,7 @@ class MessageService:
         elif result["type"] == "shopping_list":
             items = []
             for data in result["items"]:
-
+                PaymentsRepository.increment_counter(user_id, field="shopping_list")
                 val_data = ItemLLMResponse(**data)
 
                 item = ShoppingItem(

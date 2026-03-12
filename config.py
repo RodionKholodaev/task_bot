@@ -11,6 +11,12 @@ YOOKASSA_TOKEN = os.getenv("YOOKASSA_TOKEN")
 SECRET_KEY = os.getenv("SECRET_KEY")
 SHOP_ID = os.getenv("SHOP_ID")
 
+# Если захочу считать отдельно покупки и задачи
+MAX_TASK_COUNT = 50
+MAX_ITEM_COUNT = 50
+
+MAX_COUNT = 2
+
 if not BOT_TOKEN:
     raise RuntimeError("SECRET_KEY is not set in environment")
 

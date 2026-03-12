@@ -52,8 +52,6 @@ class SubscriptionTypes(enum.Enum):
     PREMIUM = "premium"
 
 
-print(SubscriptionTypes.FREE)
-
 class UserSettings(Base):
     """Модель пользователя"""
     __tablename__ = "user_settings"
