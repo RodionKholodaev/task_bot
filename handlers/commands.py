@@ -402,7 +402,7 @@ async def handle_reply(message: Message):
     else: raise ValueError("сообщение из неизвестного источника")
 
     dt_string = Formater.get_user_time(user_id)
-
+    week_info = Formater.get_week_info(user_id)
     if not dt_string:
         await message.answer("Часовой пояс не найден, добавьте его в настройках")
         return
@@ -422,7 +422,7 @@ async def handle_reply(message: Message):
         await message.answer("введите текст для редактирования")
         return
 
-    description = Formater.make_description(id, type, dt_string,request)
+    description = Formater.make_description(id, type, dt_string,request, week_info)
     if description is None: raise ValueError("почему-то не получилось создать описание")
 
     result = await AiService.ai_edit(description, dt_string, user_id)

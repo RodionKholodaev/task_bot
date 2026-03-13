@@ -18,7 +18,7 @@ class Formater:
     """
 
     @staticmethod
-    def make_description(id: int, type: str, dt_string: str, request: str) -> str | None:
+    def make_description(id: int, type: str, dt_string: str, request: str, week_info) -> str | None:
         """
         запрос пользователя для редактирования задачи
         id - id объекта
@@ -29,6 +29,9 @@ class Formater:
 
         if type == "tasks":
             logger.info("создаю запрос пользователя в LLM для задачи")
+            if week_info is None:
+                week_info = "не получилось сделать описание недели, орентируйся сам"
+
             task = TaskRepository.get_task_by_id(id)
             if not task:
                 return None
@@ -47,9 +50,11 @@ class Formater:
                 }}
             ]
             }}
+            Вот информация о неделе, чтобы ты не запутался с днями недели:
+            {week_info}
             Вот моя просьба: {request}
             '''
-            logger.debug(f"итоговый текст: {description}")
+            logger.debug(f"итоговый текст:\n {description}")
             return description
         elif type == "shopping_list":
             logger.info("создаю запрос пользователя в LLM для покупки")
@@ -77,6 +82,65 @@ class Formater:
         else:
             logger.error("Неизвестный тип объекта")
             return None
+    @staticmethod
+    def get_week_info(user_id: int, start_date=None):
+        """
+        Возвращает строку с информацией о текущем дне и следующих 7 днях.
+        
+        Args:
+            start_date: Дата, от которой ведется отсчет (по умолчанию - сегодня)
+        
+        Returns:
+            Строка с информацией о днях недели в формате:
+            "Сегодня 13.03.2026 - пятница, завтра 14.03.2026 - суббота, ..."
+        """
+        # Если дата не указана, используем сегодня
+        if start_date is None:
+            settings = UserRepository.get_user_settings(user_id)
+            if not settings:
+                return None
+            elif settings.notify_time is None and settings.utc_offset is None:
+                return None
+
+            # Часовой пояс пользователя
+            user_tz = timezone(timedelta(hours=settings.utc_offset)) # type: ignore 
+            start_date = datetime.now(user_tz)
+        
+
+        
+        # Словарь для перевода дней недели на русский
+        weekdays_ru = {
+            0: 'понедельник',
+            1: 'вторник', 
+            2: 'среда',
+            3: 'четверг',
+            4: 'пятница',
+            5: 'суббота',
+            6: 'воскресенье'
+        }
+        
+        # Формируем результат
+        result_parts = []
+        
+        # Сегодня
+        current_date = start_date
+        weekday_num = current_date.weekday()  # 0 - понедельник, 6 - воскресенье
+        date_str = current_date.strftime("%d.%m.%Y")
+        result_parts.append(f"Сегодня {date_str} - {weekdays_ru[weekday_num]}")
+        
+        # Следующие 7 дней
+        days_offset = ["завтра", "через 2 дня", "через 3 дня", "через 4 дня", 
+                    "через 5 дней", "через 6 дней", "через 7 дней"]
+        
+        for i, offset_text in enumerate(days_offset, 1):
+            next_date = start_date + timedelta(days=i)
+            weekday_num = next_date.weekday()
+            date_str = next_date.strftime("%d.%m.%Y")
+            result_parts.append(f"{offset_text} {date_str} - {weekdays_ru[weekday_num]}")
+        
+        # Объединяем все части через запятую с пробелом
+        return ", ".join(result_parts)
+
 
     @staticmethod
     def get_user_time(user_id: int) -> str | None:
@@ -172,7 +236,6 @@ class Formater:
 
     @staticmethod
     def format_category_item(item: ShoppingItem) -> str:
-        logger.info("определяю что хочет изменить пользователь")
         amount_val = int(item.amount) if item.amount and item.amount.is_integer() else item.amount # type: ignore 
         quantity_text = f"{amount_val} {item.unit}" if item.amount else "" # type: ignore 
 
@@ -180,7 +243,6 @@ class Formater:
             f"*{item.item} {quantity_text}*\n"
             f"ID товара: {item.id}"
         )
-        logger.debug(f"пользователь хочет изменить: {response_text}")
         return response_text
     
     @staticmethod
