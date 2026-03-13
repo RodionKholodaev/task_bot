@@ -4,3 +4,4 @@ python-dotenv
 openai
 apscheduler
 yookassa
+apscheduler

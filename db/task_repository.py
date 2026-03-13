@@ -70,6 +70,35 @@ class TaskRepository:
 
 
     @staticmethod
+    def get_tasks_with_deadline(user_id: int, deadline_date: date) -> List[Task]:
+        """Получить задачи с deadline на указанную дату"""
+        session = get_session()
+        try:
+            tasks = session.query(Task).filter(
+                Task.user_id == user_id,
+                Task.deadline_day == deadline_date,
+                Task.is_completed == False
+            ).all()
+            return tasks
+        finally:
+            session.close()
+
+
+    @staticmethod
+    def get_tasks_with_reminder(user_id: int) -> List[Task]:
+        """Получить все задачи с remind_date для пользователя"""
+        session = get_session()
+        try:
+            tasks = session.query(Task).filter(
+                Task.user_id == user_id,
+                Task.remind_date != None,
+                Task.is_completed == False
+            ).all()
+            return tasks
+        finally:
+            session.close()
+
+    @staticmethod
     def get_task_by_id(task_id: int) -> Task:
         """получение задачи по ее id"""
         s = get_session()

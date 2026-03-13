@@ -76,3 +76,5 @@ class Statistics:
         )
         result = await session.execute(stmt)
         return result.scalar() or 0
+
+        

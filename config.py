@@ -15,7 +15,7 @@ SHOP_ID = os.getenv("SHOP_ID")
 MAX_TASK_COUNT = 50
 MAX_ITEM_COUNT = 50
 
-MAX_COUNT = 2
+MAX_COUNT = 50
 
 if not BOT_TOKEN:
     raise RuntimeError("SECRET_KEY is not set in environment")

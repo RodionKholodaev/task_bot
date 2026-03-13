@@ -2,6 +2,9 @@ from datetime import time
 from models import UserSettings
 from db.database import get_session
 from typing import List
+import logging
+logger = logging.getLogger(__name__)
+
 class UserRepository:
 
 
@@ -24,6 +27,7 @@ class UserRepository:
 
     @staticmethod
     def upsert_user_settings(user_id: int, utc_offset: int, notify_time: time):
+        from scheduler.task_scheduler import create_daily_notification_job 
         """Обновление/создание настроек пользователя"""
         s = get_session()
         try:
@@ -38,8 +42,18 @@ class UserRepository:
                     notify_time=notify_time
                 ))
             s.commit()
+
         finally:
             s.close()
+        try:
+            create_daily_notification_job(
+                user_id=user_id,
+                utc_offset=utc_offset,
+                notify_hour=notify_time.hour,
+                notify_minute=notify_time.minute
+            )
+        except Exception as e:
+            logger.error(f"Не удалось создать daily-джобу для пользователя {user_id}: {e}")
 
     @staticmethod
     def update_description(user_id: int, description: str):

@@ -1,8 +1,3 @@
-# TODO настроить логирование (слабенькое, но есть)
-# TODO настроить обработку отключения api ключа
-# TODO более удобный ввод настроек
-# TODO расставить коментарии
-
 import asyncio
 import logging
 
@@ -14,7 +9,9 @@ if not BOT_TOKEN: raise ValueError("нет токена бота")
 from db.database import init_db
 from handlers.commands import router as commands_router
 from handlers.callbacks import router as callbacks_router
-from notifications import notification_loop
+
+from scheduler.scheduler_config import init_scheduler, shutdown_scheduler
+from scheduler.task_scheduler import load_all_jobs_from_db
 
 from logging_conf import setup_logging
 
@@ -35,17 +32,31 @@ async def main():
 
     setup_logging()
     logger.info("Бот начал работу")
+    
     # Инициализация БД
     init_db()
     
-    # Запуск цикла уведомлений
-    asyncio.create_task(notification_loop())
-    logger.info("Notification loop started")
+    # Инициализация планировщика
+    init_scheduler()
+    
+    # Загрузка всех джобов из БД
+    load_all_jobs_from_db()
+    logger.info("Все джобы загружены из БД")
     
     # Запуск polling
     logger.info("Bot started polling")
     await dp.start_polling(bot)
 
 
+async def on_shutdown():
+    """Очистка при остановке бота"""
+    shutdown_scheduler()
+    await bot.session.close()
+    logger.info("Бот остановлен")
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        asyncio.run(on_shutdown())
