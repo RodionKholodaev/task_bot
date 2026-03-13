@@ -2,9 +2,27 @@ import logging
 
 def setup_logging():
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG,
         format="%(levelname)s | %(name)s | %(filename)s:%(lineno)d | %(funcName)s | %(message)s"
     )
+
+    # ставим WARNING, чтобы видеть только критические ошибки
+    quiet_loggers = [
+        "openai",      
+        "httpx",       
+        "httpcore",    
+        "aiogram",     
+        "sqlalchemy",  
+        "apscheduler", 
+        "yookassa",    
+    ]
+
+    for logger_name in quiet_loggers:
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
+
+    # Отдельный совет по SQLAlchemy:
+    # Если начнешь ловить ошибки в БД, временно поставь ему INFO или DEBUG:
+    # logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
 # уровни по возрастанию важности:
 # DEBUG < INFO < WARNING < ERROR < CRITICAL

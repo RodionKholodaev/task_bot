@@ -1,7 +1,10 @@
 from models import Task, ShoppingItem
 from keyboards import READABLE_CATEGORIES
-from database import get_user_settings, get_task_by_id, get_item_by_id
+from db.user_repository import UserRepository
+from db.task_repository import TaskRepository
+from db.shopping_repository import ShoppingRepository
 from datetime import datetime, timedelta, timezone
+from models import SubscriptionTypes
 
 import logging 
 logger = logging.getLogger(__name__)
@@ -15,7 +18,7 @@ class Formater:
     """
 
     @staticmethod
-    def make_description(id: int, type: str, dt_string: str, request: str) -> str | None:
+    def make_description(id: int, type: str, dt_string: str, request: str, week_info) -> str | None:
         """
         запрос пользователя для редактирования задачи
         id - id объекта
@@ -26,7 +29,10 @@ class Formater:
 
         if type == "tasks":
             logger.info("создаю запрос пользователя в LLM для задачи")
-            task = get_task_by_id(id)
+            if week_info is None:
+                week_info = "не получилось сделать описание недели, орентируйся сам"
+
+            task = TaskRepository.get_task_by_id(id)
             if not task:
                 return None
             description = f'''
@@ -44,13 +50,15 @@ class Formater:
                 }}
             ]
             }}
+            Вот информация о неделе, чтобы ты не запутался с днями недели:
+            {week_info}
             Вот моя просьба: {request}
             '''
-            logger.debug(f"итоговый текст: {description}")
+            logger.debug(f"итоговый текст:\n {description}")
             return description
         elif type == "shopping_list":
             logger.info("создаю запрос пользователя в LLM для покупки")
-            item = get_item_by_id(id)
+            item = ShoppingRepository.get_item_by_id(id)
             if not item:
                 return None
             
@@ -74,6 +82,65 @@ class Formater:
         else:
             logger.error("Неизвестный тип объекта")
             return None
+    @staticmethod
+    def get_week_info(user_id: int, start_date=None):
+        """
+        Возвращает строку с информацией о текущем дне и следующих 7 днях.
+        
+        Args:
+            start_date: Дата, от которой ведется отсчет (по умолчанию - сегодня)
+        
+        Returns:
+            Строка с информацией о днях недели в формате:
+            "Сегодня 13.03.2026 - пятница, завтра 14.03.2026 - суббота, ..."
+        """
+        # Если дата не указана, используем сегодня
+        if start_date is None:
+            settings = UserRepository.get_user_settings(user_id)
+            if not settings:
+                return None
+            elif settings.notify_time is None and settings.utc_offset is None:
+                return None
+
+            # Часовой пояс пользователя
+            user_tz = timezone(timedelta(hours=settings.utc_offset)) # type: ignore 
+            start_date = datetime.now(user_tz)
+        
+
+        
+        # Словарь для перевода дней недели на русский
+        weekdays_ru = {
+            0: 'понедельник',
+            1: 'вторник', 
+            2: 'среда',
+            3: 'четверг',
+            4: 'пятница',
+            5: 'суббота',
+            6: 'воскресенье'
+        }
+        
+        # Формируем результат
+        result_parts = []
+        
+        # Сегодня
+        current_date = start_date
+        weekday_num = current_date.weekday()  # 0 - понедельник, 6 - воскресенье
+        date_str = current_date.strftime("%d.%m.%Y")
+        result_parts.append(f"Сегодня {date_str} - {weekdays_ru[weekday_num]}")
+        
+        # Следующие 7 дней
+        days_offset = ["завтра", "через 2 дня", "через 3 дня", "через 4 дня", 
+                    "через 5 дней", "через 6 дней", "через 7 дней"]
+        
+        for i, offset_text in enumerate(days_offset, 1):
+            next_date = start_date + timedelta(days=i)
+            weekday_num = next_date.weekday()
+            date_str = next_date.strftime("%d.%m.%Y")
+            result_parts.append(f"{offset_text} {date_str} - {weekdays_ru[weekday_num]}")
+        
+        # Объединяем все части через запятую с пробелом
+        return ", ".join(result_parts)
+
 
     @staticmethod
     def get_user_time(user_id: int) -> str | None:
@@ -88,12 +155,14 @@ class Formater:
             6: "Воскресенье",
         }
 
-        settings = get_user_settings(user_id)
+        settings = UserRepository.get_user_settings(user_id)
         if not settings:
+            return None
+        elif settings.notify_time is None and settings.utc_offset is None:
             return None
 
         # Часовой пояс пользователя
-        user_tz = timezone(timedelta(hours=settings.utc_offset))
+        user_tz = timezone(timedelta(hours=settings.utc_offset)) # type: ignore 
         user_datetime = datetime.now(user_tz)
 
         # День недели
@@ -111,11 +180,11 @@ class Formater:
 
         logger.info("формирую сообщение о создании/редактировании задачи")
 
-        cat_text = READABLE_CATEGORIES.get(task.category, task.category)
-        date_text = task.deadline_day.strftime("%d-%m-%Y") if task.deadline_day else 'Нет'
-        time = task.deadline_time.strftime("%H:%M") if task.deadline_time else 'Нет'
-        remind_date_str=task.remind_date.strftime("%d-%m-%Y") if task.remind_date else 'Нет'
-        remind_time = task.remind_time.strftime("%H:%M") if task.remind_time else 'Нет'
+        cat_text = READABLE_CATEGORIES.get(task.category) # type: ignore 
+        date_text = task.deadline_day.strftime("%d-%m-%Y") if task.deadline_day else 'Нет' # type: ignore 
+        time = task.deadline_time.strftime("%H:%M") if task.deadline_time else 'Нет' # type: ignore 
+        remind_date_str=task.remind_date.strftime("%d-%m-%Y") if task.remind_date else 'Нет' # type: ignore 
+        remind_time = task.remind_time.strftime("%H:%M") if task.remind_time else 'Нет' # type: ignore 
 
         status = "добавлена" if make_task else "обновлена"
         response_text = (
@@ -137,8 +206,8 @@ class Formater:
         logger.info("формирую сообщение о создании/редактировании покупки")
 
         # предварительная подготовка данных (чтобы не было 1.0 там, где не нужно)
-        amount_val = int(item.amount) if item.amount and item.amount.is_integer() else item.amount
-        quantity_text = f"{amount_val} {item.unit}" if item.amount else "Не указано"
+        amount_val = int(item.amount) if item.amount and item.amount.is_integer() else item.amount # type: ignore 
+        quantity_text = f"{amount_val} {item.unit}" if item.amount else "Не указано" # type: ignore
 
         # словарь для красивого отображения категорий (опционально)
         categories_map = {
@@ -150,14 +219,14 @@ class Formater:
             "clothes": "Одежда",
             "other": "Другое"
         }
-        cat_display = categories_map.get(item.category, item.category or "Не указана")
+        cat_display = categories_map.get(item.category, item.category or "Не указана") # type: ignore 
 
         response_text = (
             f"🛒 **Товар добавлен в список!**\n\n"
             f"📦 **Что:** {item.item}\n"
             f"🔢 **Кол-во:** {quantity_text}\n"
             f"📁 **Категория:** {cat_display}\n"
-            f"✅ **Статус:** {'Куплено' if item.is_bought else 'В списке'}\n\n"
+            f"✅ **Статус:** {'Куплено' if item.is_bought is not None else 'В списке'}\n\n"
             f"🆔 ID товара: {item.id}"
         )
         
@@ -167,15 +236,13 @@ class Formater:
 
     @staticmethod
     def format_category_item(item: ShoppingItem) -> str:
-        logger.info("определяю что хочет изменить пользователь")
-        amount_val = int(item.amount) if item.amount and item.amount.is_integer() else item.amount
-        quantity_text = f"{amount_val} {item.unit}" if item.amount else ""
+        amount_val = int(item.amount) if item.amount and item.amount.is_integer() else item.amount # type: ignore 
+        quantity_text = f"{amount_val} {item.unit}" if item.amount else "" # type: ignore 
 
         response_text = (
             f"*{item.item} {quantity_text}*\n"
             f"ID товара: {item.id}"
         )
-        logger.debug(f"пользователь хочет изменить: {response_text}")
         return response_text
     
     @staticmethod
@@ -183,7 +250,7 @@ class Formater:
         if is_day:
             deadline_time = (
                 task.deadline_time.strftime('%H:%M')
-                if task.deadline_time else ""
+                if task.deadline_time is not None else ""
             )
 
             answer = (
@@ -191,11 +258,30 @@ class Formater:
                 f"ID задачи: {task.id}"
             )
         else:
-            deadline_day = task.deadline_day.strftime('%d-%m-%Y') if task.deadline_day else ''
-            deadline_time = task.deadline_time.strftime('%H-%M') if task.deadline_time else ''
+            deadline_day = task.deadline_day.strftime('%d-%m-%Y') if task.deadline_day is not None else ''
+            deadline_time = task.deadline_time.strftime('%H-%M') if task.deadline_time is not None else ''
 
             answer = (
                 f" {deadline_day} {deadline_time} {task.description}\n"
                 f"ID задачи: {task.id}"
                 )
         return answer
+    
+    @staticmethod
+    def format_sub_info(sub: str) -> tuple[str, bool]:
+        if sub == SubscriptionTypes.FREE:
+            ans = (
+                "У вас подписка free\n"
+                "Вы можете хранить максимум 50 покупок и 50 задач\n"
+                "Оформите Pro, чтобы не иметь ограничений в использовании сервиса"
+            )
+            return (ans, False)
+        elif sub == SubscriptionTypes.PREMIUM:
+            ans = (
+                "У вас подписка Pro\n"
+                "Вы можете пользоваться сервисом без ограничений"
+            )
+            return (ans, True)
+        else:
+            raise ValueError("Неизвестный тип подписки")
+

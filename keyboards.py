@@ -9,11 +9,28 @@ def new_main_keyboard() -> ReplyKeyboardMarkup:
             [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="🌅 Завтра")],
             [ KeyboardButton(text="📆 Неделя"), KeyboardButton(text="📋 Все задачи")],
             [KeyboardButton(text="⏱ По длительности"), KeyboardButton(text="🛒 Покупки")],
-            [KeyboardButton(text="⚙️ Настройки")],
+            [KeyboardButton(text="🧑 Профиль"), KeyboardButton(text="💎 Подписка")]
         ],
         resize_keyboard=True,
     )
 
+def profile_keyboard() -> ReplyKeyboardMarkup:
+    """клавиатура в профиле"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📝 О себе"), KeyboardButton(text="⏰ Настройка уведомлений")],
+            [ KeyboardButton(text="📊 Статистика"), KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True,
+    )
+
+def skip_description_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="❌ Не вводить")]
+        ],
+        resize_keyboard=True,
+    )
 
 def duration_category_keyboard() -> ReplyKeyboardMarkup:
     """Меню выбора категории по длительности"""
@@ -38,6 +55,11 @@ def purchase_category_keyboard() -> ReplyKeyboardMarkup:
         resize_keyboard=True,
     )
 
+def buy_inline() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(text="Оформить Pro", callback_data="buy_pro_subscription")
+    return kb.as_markup()
+    
 
 def task_inline(task_id: int) -> InlineKeyboardMarkup:
     """Встроенные кнопки для задачи (выполнено/удалить)"""
@@ -73,13 +95,6 @@ PURCHASE_CATEGORY_MAP = {
     "Одежда":"clothes",
     "Другое":"other",
 }
-    # - grocery (продукты, напитки)
-    # - pharmacy (лекарства)
-    # - household (бытовая химия, товары для дома)
-    # - beauty (гигиена, косметика)
-    # - electronics (техника, батарейки)
-    # - clothes (одежда, обувь)
-    # - other (все остальное)
 
 # Маппинг для красивого вывода категорий пользователю
 READABLE_CATEGORIES = {

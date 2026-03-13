@@ -42,7 +42,8 @@ async def ask_llm(description: str, system_msg:str) -> dict:
             )
             print("после получения ответа")
 
-            content: str = response.choices[0].message.content
+            content = response.choices[0].message.content
+            assert content is not None
             data = json.loads(content)
 
             print(data)
@@ -55,7 +56,7 @@ async def ask_llm(description: str, system_msg:str) -> dict:
             error=e
             await asyncio.sleep(0.5)
 
-    return error
+    return {"error": error}
 
 async def parse_text(description: str) -> dict: 
     print("попал в parse_text")
@@ -312,7 +313,7 @@ async def parse_text(description: str) -> dict:
     ]
     }
 
-    ПРИМЕР 2:
+    ПРИМЕР 3:
     ввод:
     сегодня Monday, 2026-02-10 12:00, мне нужно купить соду яйца десяток половая швабра наушники
 
@@ -347,6 +348,23 @@ async def parse_text(description: str) -> dict:
     ]
     }
 
+    ПРИМЕР 4:
+    ввод:
+    сегодня Monday, 2026-02-10 12:00, нужно купить квартиру
+
+    ответ:
+    {
+    "type": "shopping_list",
+    "items": [
+        {
+        "category": "other",
+        "item": "квартира",
+        "amount": "",
+        "unit": ""
+        }
+    ]
+    }
+
     --------------------------------------------------
 
     ВАЖНО:
@@ -360,7 +378,7 @@ async def parse_text(description: str) -> dict:
     return data
     
 
-async def edit_task(description: str, date_and_time: str) -> dict:
+async def edit_entity(description: str, date_and_time: str) -> dict:
 
     system_msg = f'''
     Ты — ассистент по тайм-менеджменту. Твоя задача — получить задачу или список покупок и комментарий к ним,
@@ -585,6 +603,7 @@ async def edit_task(description: str, date_and_time: str) -> dict:
     ]
     }}
 
+
     пример 7 (добавить единицы измерения):
     Сегодня Friday, 2026-02-27 22:19. Вот моя покупка:
     {{
@@ -662,6 +681,94 @@ async def edit_task(description: str, date_and_time: str) -> dict:
         "item": "шампунь",
         "amount": "",
         "unit": ""
+        }}
+    ]
+    }}
+    пример 10 (разделить на части):
+    Сегодня Friday, 2026-02-27 22:19. Вот моя покупка:
+    {{
+    "type": "shopping_list",
+    "items": [
+        {{
+        "category": "other",
+        "item": "стихи мандельштама и пушкина",
+        "amount": "",
+        "unit": ""
+        }}
+    ]
+    }}
+    Вот моя просьба: раздели
+    Твой ответ:
+    {{
+    "type": "shopping_list",
+    "items": [
+        {{
+        "category": "other",
+        "item": "стихи мандельштама",
+        "amount": "",
+        "unit": ""
+        }},
+        {{
+        "category": "other",
+        "item": "стихи пушкина",
+        "amount": "",
+        "unit": ""
+        }}
+    ]
+    }}
+    пример 11 (изменить задачу на покупку):
+    Сегодня Friday, 2026-02-27 22:19. Вот моя задача:
+    {{
+    "type": "tasks",
+    "items": [
+        {{
+        "category": "short_30",
+        "date": "",
+        "time": "",
+        "remind_date": "",
+        "remind_time": "",
+        "task": "купить сборник стихов"
+        }}
+    ]
+    }}
+    Вот моя просьба: покупка
+    Твой ответ:
+    {{
+    "type": "shopping_list",
+    "items": [
+        {{
+        "category": "other",
+        "item": "сборник стихов",
+        "amount": "",
+        "unit": ""
+        }}
+    ]
+    }}
+    пример 12 (изменить покупку на задачу):
+    Сегодня Friday, 2026-02-27 22:19. Вот моя задача:
+    {{
+    "type": "shopping_list",
+    "items": [
+        {{
+        "category": "other",
+        "item": "купить абонемент в спорт зал",
+        "amount": "",
+        "unit": ""
+        }}
+    ]
+    }}
+    Вот моя просьба: задача
+    Твой ответ:
+    {{
+    "type": "tasks",
+    "items": [
+        {{
+        "category": "short_120",
+        "date": "",
+        "time": "",
+        "remind_date": "",
+        "remind_time": "",
+        "task": "купить абонемент в спорт зал"
         }}
     ]
     }}

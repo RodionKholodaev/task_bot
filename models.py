@@ -1,5 +1,6 @@
+import enum
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Time, Float
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Time, Float, Enum
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -46,6 +47,11 @@ class ShoppingItem(Base):
 
 
 
+class SubscriptionTypes(enum.Enum):
+    FREE = "free"
+    PREMIUM = "premium"
+
+
 class UserSettings(Base):
     """Модель пользователя"""
     __tablename__ = "user_settings"
@@ -53,4 +59,32 @@ class UserSettings(Base):
     user_id = Column(Integer, primary_key=True)
     utc_offset = Column(Integer, nullable=False)
     notify_time = Column(Time, nullable=False)
+    self_description = Column(String(500), nullable=True) 
+
+
+class UserAccount(Base):
+
+    __tablename__="user_account"
+
+    user_id = Column(Integer, primary_key=True)
+    task_count = Column(Integer, default=50) # нужно увеличивать и уменьшать кода нужно
+    item_count = Column(Integer, default=50) # нужно увеличивать и уменьшать кода нужно
+
+    subscription = Column(Enum(SubscriptionTypes),default=SubscriptionTypes.FREE, nullable=False )
+    subscription_until = Column(DateTime, nullable=True)
+
+# платежи
+class Payment(Base):
+    __tablename__ = "payments"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer)
+    amount = Column(Integer)
+    status = Column(String)
+    tg_payment_id = Column(String)
+    provider_payment_id = Column(String)
+    
+    created_at = Column(DateTime)
+    expires_at = Column(DateTime) # когда подписка истекает
+
 
