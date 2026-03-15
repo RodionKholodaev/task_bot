@@ -1,4 +1,5 @@
 from typing import List
+from sqlalchemy import select
 from models import Payment, UserAccount, SubscriptionTypes, UserSettings
 from db.database import get_session
 from datetime import datetime, timedelta
@@ -7,115 +8,146 @@ from datetime import datetime, timedelta
 UTC_OFFSET = 3
 NOTIFY_TIME = datetime.strptime("08:00", "%H:%M").time()
 
+
 class PaymentsRepository:
 
     @staticmethod
-    def get_started(user_id: int):
-        s = get_session()
-        user_account = s.query(UserAccount).filter_by(user_id= user_id).first()
-        user_settings = s.query(UserSettings).filter_by(user_id = user_id).first()
-        if user_account is None:
-            user_acc = UserAccount(
-                user_id = user_id,
-                task_count = 0,
-                item_count = 0,
-                subscription = SubscriptionTypes.FREE.name
-            )
-            s.add(user_acc)
-            s.commit()
-            s.refresh(user_acc)
-        if user_settings is None:
-            user_set = UserSettings(
-                user_id = user_id,
-                notify_time = NOTIFY_TIME,
-                utc_offset = UTC_OFFSET
-            )
-            s.add(user_set)
-            s.commit()
-            s.refresh(user_set)
+    async def get_started(user_id: int):
 
-        return
+        async with get_session() as s:
+
+            result = await s.execute(
+                select(UserAccount).where(UserAccount.user_id == user_id)
+            )
+            user_account = result.scalar_one_or_none()
+
+            result = await s.execute(
+                select(UserSettings).where(UserSettings.user_id == user_id)
+            )
+            user_settings = result.scalar_one_or_none()
+
+            if user_account is None:
+                user_acc = UserAccount(
+                    user_id=user_id,
+                    task_count=0,
+                    item_count=0,
+                    subscription=SubscriptionTypes.FREE.name
+                )
+                s.add(user_acc)
+                await s.commit()
+                await s.refresh(user_acc)
+
+            if user_settings is None:
+                user_set = UserSettings(
+                    user_id=user_id,
+                    notify_time=NOTIFY_TIME,
+                    utc_offset=UTC_OFFSET
+                )
+                s.add(user_set)
+                await s.commit()
+                await s.refresh(user_set)
 
 
     @staticmethod
-    def save_payment(user_id: int, tg_payment_id: str, provider_payment_id: str, amount: float):
-        s = get_session()
-        try:
+    async def save_payment(user_id: int, tg_payment_id: str, provider_payment_id: str, amount: float):
+
+        async with get_session() as s:
+
             payment = Payment(
-                user_id = user_id,
-                amount = amount,
-                status = "succeeded",
-                tg_payment_id = tg_payment_id,
-                provider_payment_id = provider_payment_id,
-                created_at = datetime.now(),
-                expires_at = datetime.now() + timedelta(days=30)
+                user_id=user_id,
+                amount=amount,
+                status="succeeded",
+                tg_payment_id=tg_payment_id,
+                provider_payment_id=provider_payment_id,
+                created_at=datetime.now(),
+                expires_at=datetime.now() + timedelta(days=30)
             )
+
             s.add(payment)
-            s.commit()
-            s.refresh(payment)
-        finally:
-            s.close()
+
+            await s.commit()
+
+            await s.refresh(payment)
+
 
     @staticmethod
-    def change_user_sub(user_id: int, new_sub: SubscriptionTypes) -> UserAccount | None:
+    async def change_user_sub(user_id: int, new_sub: SubscriptionTypes) -> UserAccount | None:
         """Обновление типа подписки пользователя"""
-        s = get_session()
-        try:
-            # 1. Получаем запись
-            account = s.query(UserAccount).filter_by(user_id=user_id).first()
-            
+
+        async with get_session() as s:
+
+            result = await s.execute(
+                select(UserAccount).where(UserAccount.user_id == user_id)
+            )
+
+            account = result.scalar_one_or_none()
+
             if account:
-                # 2. Обновляем тип подписки
-                account.subscription = new_sub #type: ignore
-                
-                # 3. Логика даты: если Premium — ставим +30 дней, если Free — зануляем
+
+                account.subscription = new_sub
+
                 if new_sub == SubscriptionTypes.PREMIUM:
-                    account.subscription_until = datetime.utcnow() + timedelta(days=30) #type: ignore
+                    account.subscription_until = datetime.utcnow() + timedelta(days=30)
                 else:
-                    account.subscription_until = None #type: ignore
-                
-                s.commit()
-                s.refresh(account)
+                    account.subscription_until = None
+
+                await s.commit()
+
+                await s.refresh(account)
+
                 return account
-            
+
             return None
-        finally:
-            s.close()
+
 
     @staticmethod
-    def get_user_sub(user_id: int) -> str | None:
-        s = get_session()
-        try:
-            account = s.query(UserAccount).filter_by(user_id = user_id).first()
+    async def get_user_sub(user_id: int) -> str | None:
+
+        async with get_session() as s:
+
+            result = await s.execute(
+                select(UserAccount).where(UserAccount.user_id == user_id)
+            )
+
+            account = result.scalar_one_or_none()
+
             if account:
-                sub = account.subscription
-                return sub # type: ignore
-            else:
-                return None
-        finally:
-            s.close()
+                return account.subscription
+
+            return None
+
 
     @staticmethod
-    def get_user_account(user_id: int) -> UserAccount:
-        s = get_session()
-        try:
-            user_acc = s.query(UserAccount).filter_by(user_id = user_id).first()
-            return user_acc
-        finally:
-            s.close()
+    async def get_user_account(user_id: int) -> UserAccount | None:
 
-# Это не самый надежный код. Нет атомарности
+        async with get_session() as s:
+
+            result = await s.execute(
+                select(UserAccount).where(UserAccount.user_id == user_id)
+            )
+
+            return result.scalar_one_or_none()
+
+
+    # Это не самый надежный код. Нет атомарности
     @staticmethod
-    def increment_counter(user_id: int, field: str):
-        s = get_session()
-        try:
-            user_acc = s.query(UserAccount).filter_by(user_id = user_id).first()
-            if user_acc is None: raise ValueError("Пользователь не найден")
+    async def increment_counter(user_id: int, field: str):
+
+        async with get_session() as s:
+
+            result = await s.execute(
+                select(UserAccount).where(UserAccount.user_id == user_id)
+            )
+
+            user_acc = result.scalar_one_or_none()
+
+            if user_acc is None:
+                raise ValueError("Пользователь не найден")
 
             if field == "tasks":
-                user_acc.task_count += 1 # type: ignore
+                user_acc.task_count += 1
+
             elif field == "shopping_list":
-                user_acc.item_count += 1 # type: ignore
-            s.commit()
-        finally:
-            s.close()
+                user_acc.item_count += 1
+
+            await s.commit()

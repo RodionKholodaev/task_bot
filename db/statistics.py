@@ -1,17 +1,12 @@
 from sqlalchemy import select, func, and_, Integer
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime, timedelta
-from models import Task, ShoppingItem
+from datetime import datetime, timezone
+from models import Task, ShoppingItem, UserAccount # Добавил UserAccount
 
 class Statistics:
     
     @staticmethod
     async def get_productivity_score(session: AsyncSession, user_id: int):
-        """
-        Возвращает: Процент выполненных задач (float).
-        Что значит: Общий показатель 'закрываемости' дел. 
-        Помогает пользователю увидеть свою эффективность.
-        """
         stmt = select(
             func.count(Task.id),
             func.sum(func.cast(Task.is_completed, Integer))
@@ -20,17 +15,15 @@ class Statistics:
         result = await session.execute(stmt)
         total, completed = result.one()
         
+        # completed может быть None, если задач нет совсем
+        completed = completed or 0 
+        
         if not total:
             return 0.0
         return round((completed / total) * 100, 1)
 
     @staticmethod
     async def get_top_task_categories(session: AsyncSession, user_id: int, limit: int = 3):
-        """
-        Возвращает: Список кортежей [(название_категории, количество)].
-        Что значит: В каких сферах жизни у пользователя больше всего дел 
-        (например, 'Работа' vs 'Личное').
-        """
         stmt = (
             select(Task.category, func.count(Task.id))
             .where(Task.user_id == user_id)
@@ -39,15 +32,11 @@ class Statistics:
             .limit(limit)
         )
         result = await session.execute(stmt)
-        return result.all()
+        # Фильтруем категории, которые вдруг оказались None
+        return [(cat, count) for cat, count in result.all() if cat]
 
     @staticmethod
     async def get_shopping_habits(session: AsyncSession, user_id: int):
-        """
-        Возвращает: Словарь с топ-категорией и общим количеством купленного.
-        Что значит: Позволяет понять, на что чаще всего направлено внимание 
-        в покупках (например, 'Продукты' или 'Техника').
-        """
         stmt = (
             select(ShoppingItem.category, func.count(ShoppingItem.id))
             .where(and_(ShoppingItem.user_id == user_id, ShoppingItem.is_bought == True))
@@ -57,16 +46,17 @@ class Statistics:
         )
         result = await session.execute(stmt)
         row = result.first()
-        return {"top_category": row[0] if row else "Нет данных", "total_bought": row[1] if row else 0}
+        
+        top_cat = row[0] if row and row[0] else "Нет данных"
+        total_bought = row[1] if row and row[1] else 0
+        
+        return {"top_category": top_cat, "total_bought": total_bought}
 
     @staticmethod
     async def get_deadline_pressure(session: AsyncSession, user_id: int):
-        """
-        Возвращает: Количество просроченных невыполненных задач (int).
-        Что значит: 'Критическая масса' дел, которые требуют немедленного внимания. 
-        Полезно для алертов в разделе статистики.
-        """
-        today = datetime.utcnow().date()
+        # Используем timezone-aware datetime для корректности, но приводим к date
+        today = datetime.now(timezone.utc).date()
+        
         stmt = select(func.count(Task.id)).where(
             and_(
                 Task.user_id == user_id,
@@ -77,4 +67,18 @@ class Statistics:
         result = await session.execute(stmt)
         return result.scalar() or 0
 
+    @staticmethod
+    async def get_account_info(session: AsyncSession, user_id: int):
+        """Получает информацию о подписке и лимитах"""
+        stmt = select(UserAccount).where(UserAccount.user_id == user_id)
+        result = await session.execute(stmt)
+        account = result.scalar_one_or_none()
         
+        if not account:
+            return {"sub": "Free", "tasks_limit": 50, "items_limit": 50}
+            
+        return {
+            "sub": account.subscription.value.upper(),
+            "tasks_limit": account.task_count,
+            "items_limit": account.item_count
+        }

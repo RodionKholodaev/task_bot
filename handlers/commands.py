@@ -30,7 +30,7 @@ from services.shopping_service import ShoppingService
 
 from db.user_repository import UserRepository
 from db.payments_repository import PaymentsRepository
-
+from db.statistics import Statistics
 router = Router()
 
 import logging
@@ -53,7 +53,7 @@ async def start(message: Message):
         raise ValueError("У сообщения нет пользователя")
     user_id = message.from_user.id
     
-    PaymentsRepository.get_started(user_id)
+    await PaymentsRepository.get_started(user_id)
         
     await message.answer(
         "Привет! 👋 Я твой умный личный менеджер.\n\n"
@@ -95,7 +95,7 @@ async def show_task_by_category(message: Message):
         user_id = message.from_user.id
     else: raise ValueError("сообщение из неизвестного источника")
     
-    tasks = TaskService.get_category_task(user_id, message.text) # type: ignore
+    tasks = await TaskService.get_category_task(user_id, message.text) # type: ignore
 
     if not tasks:
         await message.answer("Задач нет")
@@ -118,7 +118,7 @@ async def show_item_by_category(message: Message):
         user_id = message.from_user.id
     else: raise ValueError("сообщение из неизвестного источника")
 
-    items = ShoppingService.get_category_item(user_id, message.text) # type: ignore
+    items = await ShoppingService.get_category_item(user_id, message.text) # type: ignore
 
     if not items:
         await message.answer("Покупок нет")
@@ -141,7 +141,7 @@ async def show_tasks_for_day(message: Message, day_shift: int):
         user_id = message.from_user.id
     else: raise ValueError("сообщение из неизвестного источника")
 
-    tasks = TaskService.get_day_tasks(user_id, day_shift)
+    tasks = await TaskService.get_day_tasks(user_id, day_shift)
 
     if not tasks:
         await message.answer("Задач нет 🎉")
@@ -173,7 +173,7 @@ async def week(message: Message):
         user_id = message.from_user.id
     else: raise ValueError("сообщение из неизвестного источника")
 
-    tasks = TaskService.get_week_task(user_id)
+    tasks = await TaskService.get_week_task(user_id)
     if not tasks:
         await message.answer("На неделю задач нет 🎉")
         return
@@ -196,7 +196,7 @@ async def all_tasks(message: Message):
         user_id = message.from_user.id
     else: raise ValueError("сообщение из неизвестного источника")
 
-    tasks = TaskService.get_all_tasks(user_id)
+    tasks = await TaskService.get_all_tasks(user_id)
     if not tasks:
         await message.answer("Задач нет")
         return
@@ -278,7 +278,7 @@ async def save_description(message: Message, state: FSMContext):
         await message.answer("Слишком длинное описание. Максимальная длинна 600 символов")
         return
     # запись в БД
-    UserRepository.update_description(
+    await UserRepository.update_description(
         user_id=user_id,
         description=description
     )
@@ -287,13 +287,90 @@ async def save_description(message: Message, state: FSMContext):
 
     await state.clear()
 
+from aiogram import Router, F, types
+from aiogram.types import Message
+from sqlalchemy.ext.asyncio import AsyncSession
+# Импортируй свой класс для работы с БД или сессию
+# from database import get_db_session 
+# from models import Statistics 
+
+router = Router()
+
+@router.message(F.text == "📊 Статистика")
+async def statistic(message: Message):
+    if message.from_user is None:
+        return # Просто выходим, а не raise, чтобы бот не падал в логах
+    
+    user_id = message.from_user.id
+    
+    # --- ПОЛУЧЕНИЕ СЕССИИ ---
+    # ЗАМЕНИ ЭТОТ БЛОК НА ТВОЙ СПОСОБ ПОЛУЧЕНИЯ AsyncSession
+    # Например, если сессия передается через middleware в state или context
+    # async with get_db_session() as session: 
+    #    ... код ниже ...
+    
+    # Для примера предполагаем, что session уже есть или получаем так:
+    # session: AsyncSession = await db_manager.get_session() 
+    # В реальном проекте лучше использовать dependency injection или middleware
+    
+    try:
+        # Временная заглушка для сессии, удали и используй свою
+        from db.database import get_session # Пример импорта твоей фабрики сессий
+        async with get_session() as session:
+            
+            # 1. Собираем все данные параллельно или последовательно
+            productivity = await Statistics.get_productivity_score(session, user_id)
+            top_categories = await Statistics.get_top_task_categories(session, user_id)
+            shopping = await Statistics.get_shopping_habits(session, user_id)
+            overdue = await Statistics.get_deadline_pressure(session, user_id)
+            account = await Statistics.get_account_info(session, user_id)
+
+            # 2. Формируем текст сообщения
+            text = f"📊 <b>Ваша личная статистика</b>\n\n"
+            
+            # Продуктивность
+            color = "🟢" if productivity > 70 else "🟡" if productivity > 40 else "🔴"
+            text += f"{color} <b>Эффективность:</b> {productivity}% выполненных задач\n"
+            text += f"   <i>(Закрыто дел от общего количества)</i>\n\n"
+            
+            # Задачи
+            text += f"📌 <b>Активность в задачах:</b>\n"
+            if top_categories:
+                cats_text = ", ".join([f"{cat} ({cnt})" for cat, cnt in top_categories])
+                text += f"   Топ категории: {cats_text}\n"
+            else:
+                text += f"   Пока нет задач\n"
+            
+            if overdue > 0:
+                text += f"   ⚠️ <b>Просрочено:</b> {overdue} задач(и) требуют внимания!\n"
+            else:
+                text += f"   ✅ Просроченных задач нет\n"
+            text += "\n"
+            
+            # Покупки
+            text += f"🛒 <b>Покупки:</b>\n"
+            text += f"   Чаще всего покупаете: <b>{shopping['top_category']}</b>\n"
+            text += f"   Всего куплено позиций: {shopping['total_bought']}\n\n"
+            
+            # Аккаунт
+            text += f"💎 <b>Статус аккаунта:</b> {account['sub']}\n"
+            text += f"   Лимит задач: {account['tasks_limit']} | Лимит покупок: {account['items_limit']}"
+            
+            # 3. Отправляем сообщение
+            await message.answer(text, parse_mode="HTML")
+            
+    except Exception as e:
+        # Логирование ошибки
+        print(f"Error in statistic handler: {e}")
+        await message.answer("😕 К сожалению, сейчас не удалось загрузить статистику. Попробуйте позже.")
+
 @router.message(F.text == "💎 Подписка")
 async def subscription(message: Message):
     if message.from_user is None:
         raise ValueError("Сообщение не от пользователя")
     else:
         user_id = message.from_user.id
-        user_sub = PaymentsRepository.get_user_sub(user_id)
+        user_sub = await PaymentsRepository.get_user_sub(user_id)
 
         if user_sub is None:
             await message.answer("Вас пока нет в нашей базе данных\n Создайте задачу")
@@ -340,7 +417,7 @@ async def save_settings(message: Message):
     else: raise ValueError("сообщение из неизвестного источника")
 
     offset_str, time_str = message.text.split() # type: ignore
-    UserRepository.upsert_user_settings(
+    await UserRepository.upsert_user_settings(
         user_id,
         int(offset_str),
         datetime.strptime(time_str, "%H:%M").time()
@@ -383,8 +460,8 @@ async def successful_payment(message: Message):
         user_id = message.from_user.id
         amount = payment.total_amount/100 # изначально в копейках
 
-        PaymentsRepository.save_payment(user_id, tg_payment_id, provider_payment_id, amount)
-        PaymentsRepository.change_user_sub(user_id, SubscriptionTypes.PREMIUM)
+        await PaymentsRepository.save_payment(user_id, tg_payment_id, provider_payment_id, amount)
+        await PaymentsRepository.change_user_sub(user_id, SubscriptionTypes.PREMIUM)
 
         # выдать подписку
         await message.answer("Оплата прошла успешно!")
