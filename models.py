@@ -74,6 +74,7 @@ class UserAccount(Base):
         Enum(SubscriptionTypes), 
         default=SubscriptionTypes.FREE
     )
+    
     subscription_until: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
 class Payment(Base):
