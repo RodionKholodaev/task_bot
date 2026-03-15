@@ -1,90 +1,91 @@
 import enum
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Time, Float, Enum
-from sqlalchemy.orm import declarative_base
+from datetime import datetime, date, time
+from typing import Optional
 
-Base = declarative_base()
+from sqlalchemy import String, Boolean, DateTime, Date, Time, Float, Enum, BigInteger
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-
-class Task(Base):
-    """Модель для задачи"""
-    __tablename__ = "tasks"
-
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, index=True, nullable=False)
-    description = Column(String, nullable=False)
-    category = Column(String, nullable=False)
-    is_completed = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    deadline_day = Column(Date, nullable=True)
-    deadline_time = Column(Time, nullable=True)
-
-    remind_date = Column(Date, nullable=True)
-    remind_time = Column(Time, nullable=True)
-
-class ShoppingItem(Base):
-    """Модель для конкретного товара в списке покупок"""
-    __tablename__ = "shopping_items"
-
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, index=True, nullable=False)
-    
-    # Суть покупки
-    item = Column(String(255), nullable=False)
-    category = Column(String(100), nullable=True) # "Продукты", "Аптека" и т.д.
-    
-    # Количественные характеристики
-    amount = Column(Float, nullable=True)
-    unit = Column(String(20), nullable=True) # кг, мл, упак.
-    
-    # Состояние
-    is_bought = Column(Boolean, default=False)
-    
-    # Таймстампы
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-
+# Определяем базовый класс
+class Base(DeclarativeBase):
+    pass
 
 class SubscriptionTypes(enum.Enum):
     FREE = "free"
     PREMIUM = "premium"
 
+class Task(Base):
+    """Модель для задачи"""
+    __tablename__ = "tasks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # Используем BigInteger для Telegram ID, так как они могут превысить 2^31-1
+    user_id: Mapped[int] = mapped_column(index=True, nullable=False)
+    description: Mapped[str] = mapped_column(nullable=False)
+    category: Mapped[str] = mapped_column(nullable=False)
+    is_completed: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+
+    deadline_day: Mapped[Optional[date]] = mapped_column(Date)
+    deadline_time: Mapped[Optional[time]] = mapped_column(Time)
+
+    remind_date: Mapped[Optional[date]] = mapped_column(Date)
+    remind_time: Mapped[Optional[time]] = mapped_column(Time)
+
+class ShoppingItem(Base):
+    """Модель для товара в списке покупок"""
+    __tablename__ = "shopping_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(index=True)
+    
+    item: Mapped[str] = mapped_column(String(255))
+    category: Mapped[Optional[str]] = mapped_column(String(100))
+    
+    amount: Mapped[Optional[float]] = mapped_column(Float)
+    unit: Mapped[Optional[str]] = mapped_column(String(20))
+    
+    is_bought: Mapped[bool] = mapped_column(default=False)
+    
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        default=datetime.utcnow, 
+        onupdate=datetime.utcnow
+    )
 
 class UserSettings(Base):
-    """Модель пользователя"""
+    """Настройки пользователя"""
     __tablename__ = "user_settings"
 
-    user_id = Column(Integer, primary_key=True)
-    utc_offset = Column(Integer, nullable=False)
-    notify_time = Column(Time, nullable=False)
-    self_description = Column(String(500), nullable=True) 
-
+    user_id: Mapped[int] = mapped_column(primary_key=True)
+    utc_offset: Mapped[int] = mapped_column(nullable=False)
+    notify_time: Mapped[time] = mapped_column(Time, nullable=False)
+    self_description: Mapped[Optional[str]] = mapped_column(String(500))
 
 class UserAccount(Base):
+    """Аккаунт и статистика пользователя"""
+    __tablename__ = "user_account"
 
-    __tablename__="user_account"
+    user_id: Mapped[int] = mapped_column(primary_key=True)
+    task_count: Mapped[int] = mapped_column(default=50)
+    item_count: Mapped[int] = mapped_column(default=50)
 
-    user_id = Column(Integer, primary_key=True)
-    task_count = Column(Integer, default=50) # нужно увеличивать и уменьшать кода нужно
-    item_count = Column(Integer, default=50) # нужно увеличивать и уменьшать кода нужно
+    
+    subscription: Mapped[SubscriptionTypes] = mapped_column(
+        Enum(SubscriptionTypes), 
+        default=SubscriptionTypes.FREE
+    )
+    subscription_until: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
-    subscription = Column(Enum(SubscriptionTypes),default=SubscriptionTypes.FREE, nullable=False )
-    subscription_until = Column(DateTime, nullable=True)
-
-# платежи
 class Payment(Base):
+    """История платежей"""
     __tablename__ = "payments"
 
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer)
-    amount = Column(Integer)
-    status = Column(String)
-    tg_payment_id = Column(String)
-    provider_payment_id = Column(String)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column()
+    amount: Mapped[int] = mapped_column()
+    status: Mapped[str] = mapped_column()
+    tg_payment_id: Mapped[str] = mapped_column()
+    provider_payment_id: Mapped[str] = mapped_column()
     
-    created_at = Column(DateTime)
-    expires_at = Column(DateTime) # когда подписка истекает
-
-
+    created_at: Mapped[datetime] = mapped_column()
+    expires_at: Mapped[datetime] = mapped_column()
