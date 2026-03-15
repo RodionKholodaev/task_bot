@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-DB_URL = os.getenv("DATABASE_URL", "sqlite:///tasks.db")
+DB_URL = os.getenv("DB_URL")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 YOOKASSA_TOKEN = os.getenv("YOOKASSA_TOKEN")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -16,6 +16,8 @@ MAX_TASK_COUNT = 50
 MAX_ITEM_COUNT = 50
 
 MAX_COUNT = 50
+if not DB_URL:
+    raise RuntimeError("DB_URL is not set in enviroment")
 
 if not BOT_TOKEN:
     raise RuntimeError("SECRET_KEY is not set in environment")

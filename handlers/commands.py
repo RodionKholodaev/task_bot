@@ -376,7 +376,7 @@ async def subscription(message: Message):
             await message.answer("Вас пока нет в нашей базе данных\n Создайте задачу")
             return
 
-        ans, is_pro = Formater.format_sub_info(user_sub)
+        ans, is_pro = Formater.format_sub_info(user_sub) #type: ignore
         
         if is_pro:
             await message.answer(ans)
@@ -478,8 +478,8 @@ async def handle_reply(message: Message):
         user_id = message.from_user.id
     else: raise ValueError("сообщение из неизвестного источника")
 
-    dt_string = Formater.get_user_time(user_id)
-    week_info = Formater.get_week_info(user_id)
+    dt_string = await Formater.get_user_time(user_id)
+    week_info = await Formater.get_week_info(user_id)
     if not dt_string:
         await message.answer("Часовой пояс не найден, добавьте его в настройках")
         return
@@ -499,16 +499,16 @@ async def handle_reply(message: Message):
         await message.answer("введите текст для редактирования")
         return
 
-    description = Formater.make_description(id, type, dt_string,request, week_info)
+    description = await Formater.make_description(id, type, dt_string,request, week_info)
     if description is None: raise ValueError("почему-то не получилось создать описание")
 
     result = await AiService.ai_edit(description, dt_string, user_id)
 
 # ------------------------- 
     # удаляем старую сущность (задачи или покупка)
-    MessageService.delete_entity(id, type, user_id)
+    await MessageService.delete_entity(id, type, user_id)
     # сохраняем новую(ые) сущность(и)
-    entities = MessageService.make_save_new_entity(result, user_id)
+    entities = await MessageService.make_save_new_entity(result, user_id)
 
 
     if entities is None:
@@ -521,7 +521,7 @@ async def handle_reply(message: Message):
         logger.info("попал в отправку задачи")
         for entity in entities:
             logger.info("попал в цикл отправки задач")
-            response_text = Formater.format_task(entity, make_task = False)
+            response_text = Formater.format_task(entity, make_task = False) #type: ignore
             await message.answer(
                 response_text,
                 reply_markup=task_inline(entity.id),  # type: ignore
@@ -529,7 +529,7 @@ async def handle_reply(message: Message):
             )
     elif type =="shopping_list":
         for entity in entities:
-            response_text = Formater.format_shopping_list(entity)
+            response_text = Formater.format_shopping_list(entity) #type: ignore
             await message.answer(
                 response_text,
                 reply_markup=shopping_inline(entity.id), # type: ignore
@@ -586,13 +586,13 @@ async def new_task(message: Message):
         await message.answer("Не получилось выделить задачу из вашего текста. Пожалуйста напишите подробнее")
         return
     print("до сохранения объекта")
-    entitys = MessageService.make_save_new_entity(data_message, user_id)
+    entitys = await MessageService.make_save_new_entity(data_message, user_id)
     if entitys is None:
         raise ValueError("ошибка при сохранении сущности")
 
     if data_message["type"]=="tasks":
             for entity in entitys:
-                response_text = Formater.format_task(entity, make_task = True)
+                response_text = Formater.format_task(entity, make_task = True) #type: ignore
 
                 await message.answer(
                     response_text,
@@ -602,7 +602,7 @@ async def new_task(message: Message):
 
     elif data_message["type"]=="shopping_list":
             for entity in entitys:
-                response_text = Formater.format_shopping_list(entity)
+                response_text = Formater.format_shopping_list(entity) #type: ignore
 
                 await message.answer(
                     response_text,

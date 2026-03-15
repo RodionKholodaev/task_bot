@@ -1,4 +1,4 @@
-from typing import List
+from typing import Sequence
 from sqlalchemy import select
 from models import ShoppingItem
 from db.database import get_session
@@ -23,7 +23,7 @@ class ShoppingRepository:
 
 
     @staticmethod
-    async def get_item_by_category(user_id: int, category: str) -> List[ShoppingItem]:
+    async def get_item_by_category(user_id: int, category: str) -> Sequence[ShoppingItem]:
 
         async with get_session() as s:
 

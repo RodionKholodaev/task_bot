@@ -4,7 +4,7 @@ from models import Base
 
 # инициализация async БД
 # DB_URL должен быть вида sqlite+aiosqlite:///tasks.db (или другой async-драйвер)
-engine = create_async_engine(DB_URL, echo=False, future=True)
+engine = create_async_engine(DB_URL, echo=False, future=True) #type: ignore
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,

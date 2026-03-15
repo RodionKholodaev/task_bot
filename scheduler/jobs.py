@@ -25,7 +25,7 @@ async def send_daily_notification(user_id: int, utc_offset: int):
         local_date = local_now.date()
         
         # Получаем задачи на сегодня с deadline_day
-        tasks = TaskRepository.get_tasks_with_deadline(user_id, local_date)
+        tasks = await TaskRepository.get_tasks_with_deadline(user_id, local_date)
         
         if tasks:
             text = "🔔 Задачи на сегодня:\n" + "\n".join(
@@ -48,7 +48,7 @@ async def send_task_reminder(user_id: int, task_id: int):
     try:
         logger.info(f"Напоминание о задаче {task_id} для пользователя {user_id}")
         
-        task = TaskRepository.get_task_by_id(task_id)
+        task = await TaskRepository.get_task_by_id(task_id)
         
         if task and not task.is_completed: #type: ignore
             text = f"⏰ Напоминание:\n{task.description}"

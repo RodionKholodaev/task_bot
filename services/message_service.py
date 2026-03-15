@@ -19,17 +19,17 @@ class MessageService:
     """
 
     @staticmethod
-    def delete_entity(id:int, type: str, user_id: int):
+    async def delete_entity(id:int, type: str, user_id: int):
         if type == "tasks":
-            TaskRepository.delete_task(id, user_id)
+            await TaskRepository.delete_task(id, user_id)
         elif type == "shopping_list":
-            ShoppingRepository.delete_item(id, user_id)
+            await ShoppingRepository.delete_item(id, user_id)
         else:
             logger.error(f"неизвестный тип для удаления: {type}")
             raise ValueError(f"неизвестная сущность {type}")
             
     @staticmethod
-    def make_save_new_entity(result: dict, user_id: int) -> List[Task] | List[ShoppingItem] | None:
+    async def make_save_new_entity(result: dict, user_id: int) -> List[Task] | List[ShoppingItem] | None:
         settings = UserRepository.get_user_settings(user_id)
         if settings is None:
             raise ValueError("пользователь не найден")
@@ -37,7 +37,7 @@ class MessageService:
         if result["type"] == "tasks":
             tasks = []
             for data in result["items"]:
-                PaymentsRepository.increment_counter(user_id, field="tasks")
+                await PaymentsRepository.increment_counter(user_id, field="tasks")
                 val_data = TaskLLMResponse(**data)
 
                 task = Task(
@@ -52,7 +52,7 @@ class MessageService:
                 logger.debug("создал задачу")
                 
                 # сначала сохраняем в БД
-                TaskRepository.save_task(task)
+                await TaskRepository.save_task(task)
                 logger.debug("сохранил задачу")
                 
                 # потом создаём джобу напоминания (если есть remind_date)
@@ -74,7 +74,7 @@ class MessageService:
         elif result["type"] == "shopping_list":
             items = []
             for data in result["items"]:
-                PaymentsRepository.increment_counter(user_id, field="shopping_list")
+                await PaymentsRepository.increment_counter(user_id, field="shopping_list")
                 val_data = ItemLLMResponse(**data)
 
                 item = ShoppingItem(
@@ -85,7 +85,7 @@ class MessageService:
                     unit = val_data.unit
                 )
                 logger.debug("создал покупку")
-                ShoppingRepository.save_shopping_item(item)
+                await ShoppingRepository.save_shopping_item(item)
                 logger.debug("сохранил покупку")
                 items.append(item)
             

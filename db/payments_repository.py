@@ -101,7 +101,7 @@ class PaymentsRepository:
 
 
     @staticmethod
-    async def get_user_sub(user_id: int) -> str | None:
+    async def get_user_sub(user_id: int) -> SubscriptionTypes | None:
 
         async with get_session() as s:
 

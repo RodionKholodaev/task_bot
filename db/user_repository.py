@@ -2,7 +2,7 @@ from datetime import time
 from sqlalchemy import select
 from models import UserSettings
 from db.database import get_session
-from typing import List
+from typing import Sequence
 import logging
 
 logger = logging.getLogger(__name__)
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class UserRepository:
 
     @staticmethod
-    async def get_all_users() -> List[UserSettings] | None:
+    async def get_all_users() -> Sequence[UserSettings] | None:
 
         async with get_session() as session:
 

@@ -34,13 +34,13 @@ async def main():
     logger.info("Бот начал работу")
     
     # Инициализация БД
-    init_db()
+    await init_db()
     
     # Инициализация планировщика
     init_scheduler()
     
     # Загрузка всех джобов из БД
-    load_all_jobs_from_db()
+    await load_all_jobs_from_db()
     logger.info("Все джобы загружены из БД")
     
     # Запуск polling
