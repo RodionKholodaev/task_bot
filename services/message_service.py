@@ -38,7 +38,7 @@ class MessageService:
         if result["type"] == "tasks":
             tasks = []
             for data in result["items"]:
-                await PaymentsRepository.increment_counter(s, user_id, field="tasks")
+                await PaymentsRepository.update_user_counter(s, user_id, field="tasks", delta=1)
                 val_data = TaskLLMResponse(**data)
 
                 task = Task(
@@ -75,7 +75,7 @@ class MessageService:
         elif result["type"] == "shopping_list":
             items = []
             for data in result["items"]:
-                await PaymentsRepository.increment_counter(s, user_id, field="shopping_list")
+                await PaymentsRepository.update_user_counter(s, user_id, field="shopping_list", delta=1)
                 val_data = ItemLLMResponse(**data)
 
                 item = ShoppingItem(

@@ -1,9 +1,9 @@
 from datetime import date
-from typing import List, Sequence
+from typing import Sequence
 from sqlalchemy import select
 from models import Task
-from db.database import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
+from payments_repository import PaymentsRepository
 class TaskRepository:
 
     @staticmethod
@@ -113,6 +113,7 @@ class TaskRepository:
     @staticmethod
     async def mark_done(s: AsyncSession, task_id: int, user_id: int) -> bool:
         """Пометить задачу выполненной"""
+        await PaymentsRepository.update_user_counter(s, user_id, field="tasks", delta=-1)
 
         result = await s.execute(
             select(Task)
@@ -129,6 +130,7 @@ class TaskRepository:
     @staticmethod
     async def delete_task(s: AsyncSession, task_id: int, user_id: int) -> bool:
         """Удалить задачу"""
+        await PaymentsRepository.update_user_counter(s, user_id, field="tasks", delta=-1)
 
         result = await s.execute(
             select(Task)

@@ -1,7 +1,7 @@
 from typing import Sequence
 from sqlalchemy import select
 from models import ShoppingItem
-from db.database import get_session
+from db.payments_repository import PaymentsRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
 class ShoppingRepository:
@@ -48,7 +48,7 @@ class ShoppingRepository:
     @staticmethod
     async def mark_bought(s: AsyncSession, item_id: int, user_id: int) -> bool:
         """Пометить предмет купленным"""
-
+        await PaymentsRepository.update_user_counter(s, user_id, field="shopping_list", delta=-1)
         result = await s.execute(
             select(ShoppingItem).where(
                 ShoppingItem.id == item_id,
@@ -71,7 +71,7 @@ class ShoppingRepository:
     @staticmethod
     async def delete_item(s: AsyncSession, item_id: int, user_id: int) -> bool:
         """Удалить задачу"""
-
+        await PaymentsRepository.update_user_counter(s, user_id, field="shopping_list", delta=-1)
         result = await s.execute(
             select(ShoppingItem).where(
                 ShoppingItem.id == item_id,
