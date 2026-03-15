@@ -8,7 +8,8 @@ from .parser import Parser
 from models import Task, ShoppingItem
 from ai.schemas import ItemLLMResponse, TaskLLMResponse
 from typing import List
-from scheduler.task_scheduler import create_task_reminder_job, create_daily_notification_job
+from scheduler.task_scheduler import create_task_reminder_job
+from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 logger = logging.getLogger(__name__)
 
@@ -19,25 +20,25 @@ class MessageService:
     """
 
     @staticmethod
-    async def delete_entity(id:int, type: str, user_id: int):
+    async def delete_entity(s: AsyncSession, id:int, type: str, user_id: int):
         if type == "tasks":
-            await TaskRepository.delete_task(id, user_id)
+            await TaskRepository.delete_task(s, id, user_id)
         elif type == "shopping_list":
-            await ShoppingRepository.delete_item(id, user_id)
+            await ShoppingRepository.delete_item(s, id, user_id)
         else:
             logger.error(f"неизвестный тип для удаления: {type}")
             raise ValueError(f"неизвестная сущность {type}")
             
     @staticmethod
-    async def make_save_new_entity(result: dict, user_id: int) -> List[Task] | List[ShoppingItem] | None:
-        settings = UserRepository.get_user_settings(user_id)
+    async def make_save_new_entity(s: AsyncSession, result: dict, user_id: int) -> List[Task] | List[ShoppingItem] | None:
+        settings = UserRepository.get_user_settings(s, user_id)
         if settings is None:
             raise ValueError("пользователь не найден")
             
         if result["type"] == "tasks":
             tasks = []
             for data in result["items"]:
-                await PaymentsRepository.increment_counter(user_id, field="tasks")
+                await PaymentsRepository.increment_counter(s, user_id, field="tasks")
                 val_data = TaskLLMResponse(**data)
 
                 task = Task(
@@ -52,7 +53,7 @@ class MessageService:
                 logger.debug("создал задачу")
                 
                 # сначала сохраняем в БД
-                await TaskRepository.save_task(task)
+                await TaskRepository.save_task(s, task)
                 logger.debug("сохранил задачу")
                 
                 # потом создаём джобу напоминания (если есть remind_date)
@@ -74,7 +75,7 @@ class MessageService:
         elif result["type"] == "shopping_list":
             items = []
             for data in result["items"]:
-                await PaymentsRepository.increment_counter(user_id, field="shopping_list")
+                await PaymentsRepository.increment_counter(s, user_id, field="shopping_list")
                 val_data = ItemLLMResponse(**data)
 
                 item = ShoppingItem(
@@ -85,7 +86,7 @@ class MessageService:
                     unit = val_data.unit
                 )
                 logger.debug("создал покупку")
-                await ShoppingRepository.save_shopping_item(item)
+                await ShoppingRepository.save_shopping_item(s, item)
                 logger.debug("сохранил покупку")
                 items.append(item)
             

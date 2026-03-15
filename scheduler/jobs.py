@@ -5,6 +5,7 @@ import logging
 from aiogram import Bot
 from config import BOT_TOKEN
 from db.task_repository import TaskRepository
+from db.database import get_session
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,8 @@ async def send_daily_notification(user_id: int, utc_offset: int):
         local_date = local_now.date()
         
         # Получаем задачи на сегодня с deadline_day
-        tasks = await TaskRepository.get_tasks_with_deadline(user_id, local_date)
+        async with get_session() as s:
+            tasks = await TaskRepository.get_tasks_with_deadline(s, user_id, local_date)
         
         if tasks:
             text = "🔔 Задачи на сегодня:\n" + "\n".join(
@@ -47,8 +49,8 @@ async def send_task_reminder(user_id: int, task_id: int):
     """
     try:
         logger.info(f"Напоминание о задаче {task_id} для пользователя {user_id}")
-        
-        task = await TaskRepository.get_task_by_id(task_id)
+        async with get_session() as s:
+            task = await TaskRepository.get_task_by_id(s, task_id)
         
         if task and not task.is_completed: #type: ignore
             text = f"⏰ Напоминание:\n{task.description}"

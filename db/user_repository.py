@@ -4,63 +4,57 @@ from models import UserSettings
 from db.database import get_session
 from typing import Sequence
 import logging
-
+from sqlalchemy.ext.asyncio import AsyncSession
 logger = logging.getLogger(__name__)
 
 
 class UserRepository:
 
     @staticmethod
-    async def get_all_users() -> Sequence[UserSettings] | None:
+    async def get_all_users(session: AsyncSession) -> Sequence[UserSettings] | None:
 
-        async with get_session() as session:
+        result = await session.execute(
+            select(UserSettings)
+        )
 
-            result = await session.execute(
-                select(UserSettings)
-            )
-
-            return result.scalars().all()
+        return result.scalars().all()
 
 
     @staticmethod
-    async def get_user_settings(user_id: int) -> UserSettings | None:
+    async def get_user_settings(session: AsyncSession, user_id: int) -> UserSettings | None:
         """Получение настроек пользователя"""
 
-        async with get_session() as session:
+        result = await session.execute(
+            select(UserSettings).where(UserSettings.user_id == user_id)
+        )
 
-            result = await session.execute(
-                select(UserSettings).where(UserSettings.user_id == user_id)
-            )
-
-            return result.scalar_one_or_none()
+        return result.scalar_one_or_none()
 
 
     @staticmethod
-    async def upsert_user_settings(user_id: int, utc_offset: int, notify_time: time):
+    async def upsert_user_settings(session: AsyncSession, user_id: int, utc_offset: int, notify_time: time):
 
         from scheduler.task_scheduler import create_daily_notification_job
 
-        async with get_session() as session:
+        result = await session.execute(
+            select(UserSettings).where(UserSettings.user_id == user_id)
+        )
 
-            result = await session.execute(
-                select(UserSettings).where(UserSettings.user_id == user_id)
+        settings = result.scalar_one_or_none()
+
+        if settings:
+            settings.utc_offset = utc_offset
+            settings.notify_time = notify_time
+
+        else:
+            settings = UserSettings(
+                user_id=user_id,
+                utc_offset=utc_offset,
+                notify_time=notify_time
             )
+            session.add(settings)
 
-            settings = result.scalar_one_or_none()
-
-            if settings:
-                settings.utc_offset = utc_offset
-                settings.notify_time = notify_time
-
-            else:
-                settings = UserSettings(
-                    user_id=user_id,
-                    utc_offset=utc_offset,
-                    notify_time=notify_time
-                )
-                session.add(settings)
-
-            await session.commit()
+        await session.commit()
 
         try:
             create_daily_notification_job(
@@ -76,42 +70,38 @@ class UserRepository:
 
 
     @staticmethod
-    async def update_description(user_id: int, description: str):
+    async def update_description(session: AsyncSession, user_id: int, description: str):
 
-        async with get_session() as session:
+        result = await session.execute(
+            select(UserSettings).where(UserSettings.user_id == user_id)
+        )
 
-            result = await session.execute(
-                select(UserSettings).where(UserSettings.user_id == user_id)
+        settings = result.scalar_one_or_none()
+
+        if settings:
+            settings.self_description = description
+
+        else:
+            session.add(
+                UserSettings(
+                    user_id=user_id,
+                    self_description=description
+                )
             )
 
-            settings = result.scalar_one_or_none()
-
-            if settings:
-                settings.self_description = description
-
-            else:
-                session.add(
-                    UserSettings(
-                        user_id=user_id,
-                        self_description=description
-                    )
-                )
-
-            await session.commit()
+        await session.commit()
 
 
     @staticmethod
-    async def get_description(user_id: int) -> str | None:
+    async def get_description(session: AsyncSession, user_id: int) -> str | None:
 
-        async with get_session() as session:
+        result = await session.execute(
+            select(UserSettings).where(UserSettings.user_id == user_id)
+        )
 
-            result = await session.execute(
-                select(UserSettings).where(UserSettings.user_id == user_id)
-            )
+        settings = result.scalar_one_or_none()
 
-            settings = result.scalar_one_or_none()
+        if settings and settings.self_description:
+            return settings.self_description
 
-            if settings and settings.self_description:
-                return settings.self_description
-
-            return None
+        return None

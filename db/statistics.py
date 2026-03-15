@@ -79,6 +79,6 @@ class Statistics:
             
         return {
             "sub": account.subscription.value.upper(),
-            "tasks_limit": account.task_count,
-            "items_limit": account.item_count
+            "tasks_count": account.task_count,
+            "items_count": account.item_count
         }

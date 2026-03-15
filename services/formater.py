@@ -5,7 +5,7 @@ from db.task_repository import TaskRepository
 from db.shopping_repository import ShoppingRepository
 from datetime import datetime, timedelta, timezone
 from models import SubscriptionTypes
-
+from sqlalchemy.ext.asyncio import AsyncSession
 import logging 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class Formater:
     """
 
     @staticmethod
-    async def make_description(id: int, type: str, dt_string: str, request: str, week_info) -> str | None:
+    async def make_description(s: AsyncSession, id: int, type: str, dt_string: str, request: str, week_info) -> str | None:
         """
         запрос пользователя для редактирования задачи
         id - id объекта
@@ -32,7 +32,7 @@ class Formater:
             if week_info is None:
                 week_info = "не получилось сделать описание недели, орентируйся сам"
 
-            task = await TaskRepository.get_task_by_id(id)
+            task = await TaskRepository.get_task_by_id(s, id)
             if not task:
                 return None
             description = f'''
@@ -58,7 +58,7 @@ class Formater:
             return description
         elif type == "shopping_list":
             logger.info("создаю запрос пользователя в LLM для покупки")
-            item = await ShoppingRepository.get_item_by_id(id)
+            item = await ShoppingRepository.get_item_by_id(s, id)
             if not item:
                 return None
             
@@ -83,7 +83,7 @@ class Formater:
             logger.error("Неизвестный тип объекта")
             return None
     @staticmethod
-    async def get_week_info(user_id: int, start_date=None):
+    async def get_week_info(s: AsyncSession, user_id: int, start_date=None):
         """
         Возвращает строку с информацией о текущем дне и следующих 7 днях.
         
@@ -96,7 +96,7 @@ class Formater:
         """
         # Если дата не указана, используем сегодня
         if start_date is None:
-            settings = await UserRepository.get_user_settings(user_id)
+            settings = await UserRepository.get_user_settings(s, user_id)
             if not settings:
                 return None
             elif settings.notify_time is None and settings.utc_offset is None:
@@ -143,7 +143,7 @@ class Formater:
 
 
     @staticmethod
-    async def get_user_time(user_id: int) -> str | None:
+    async def get_user_time(s: AsyncSession, user_id: int) -> str | None:
         logger.info("получаем день, дату и время для LLM")
         WEEKDAYS_RU = {
             0: "Понедельник",
@@ -155,7 +155,7 @@ class Formater:
             6: "Воскресенье",
         }
 
-        settings = await UserRepository.get_user_settings(user_id)
+        settings = await UserRepository.get_user_settings(s, user_id)
         if not settings:
             return None
         elif settings.notify_time is None and settings.utc_offset is None:
