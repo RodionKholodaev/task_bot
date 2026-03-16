@@ -3,7 +3,7 @@ from typing import Sequence
 from sqlalchemy import select
 from models import Task
 from sqlalchemy.ext.asyncio import AsyncSession
-from payments_repository import PaymentsRepository
+from db.payments_repository import PaymentsRepository
 class TaskRepository:
 
     @staticmethod

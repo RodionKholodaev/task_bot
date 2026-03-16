@@ -30,7 +30,7 @@ class TaskLimitMiddleware(BaseMiddleware):
         
         # достаем данные аккаунта (метод в репозитории)
         async with get_session() as s:
-            account = PaymentsRepository.get_user_account(s, user_id)
+            account = await PaymentsRepository.get_user_account(s, user_id)
         
         if not account: # пускай хендлер сам разбирается
             return await handler(event, data)

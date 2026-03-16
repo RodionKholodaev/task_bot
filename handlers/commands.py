@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from aiogram import Router, F
+from aiogram import Router, F, Bot
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 
@@ -24,6 +24,7 @@ from services.message_service import MessageService
 from services.formater import Formater
 from services.task_service import TaskService
 from services.shopping_service import ShoppingService
+from services.voice_service import transcribe_voice
 
 from db.user_repository import UserRepository
 from db.payments_repository import PaymentsRepository
@@ -31,6 +32,7 @@ from db.statistics import Statistics
 from db.database import get_session
 
 from models import SubscriptionTypes
+
 
 router = Router()
 
@@ -324,10 +326,15 @@ async def statistic(message: Message):
             
             # 1. Собираем все данные параллельно или последовательно
             productivity = await Statistics.get_productivity_score(session, user_id)
+            logger.debug(f"получил productivity: {productivity}")
             top_categories = await Statistics.get_top_task_categories(session, user_id)
+            logger.debug(f"получил top_categories: {top_categories}")
             shopping = await Statistics.get_shopping_habits(session, user_id)
+            logger.debug(f"получил shopping: {shopping}")
             overdue = await Statistics.get_deadline_pressure(session, user_id)
+            logger.debug(f"получил overdue: {overdue}")
             account = await Statistics.get_account_info(session, user_id)
+            logger.debug(f"получил account: {account}")
 
             # 2. Формируем текст сообщения
             text = f"📊 <b>Ваша личная статистика</b>\n\n"
@@ -358,7 +365,7 @@ async def statistic(message: Message):
             
             # Аккаунт
             text += f"💎 <b>Статус аккаунта:</b> {account['sub']}\n"
-            text += f"   Лимит задач: {account['tasks_limit']} | Лимит покупок: {account['items_limit']}"
+            text += f"   Задач создано: {account['tasks_count']} | Покупок: {account['items_count']}"
             
             # 3. Отправляем сообщение
             await message.answer(text, parse_mode="HTML")
@@ -438,6 +445,31 @@ async def successful_payment(message: Message):
         await message.answer("Приозошла ошибка при обновлении подписки. Пожалуйста напишите в поддержку")
         
 
+# обработка голосового сообщения
+@router.message(F.voice, flags={"long_operation": "check_limits"})
+async def handle_voice_message(message: Message, bot: Bot):
+    # 1. Отправляем статус "печать", чтобы пользователь видел активность
+    await message.bot.send_chat_action(chat_id=message.chat.id, action="typing") #type:ignore
+    
+    # 2. Получаем информацию о файле
+    voice = message.voice
+    file_info = await bot.get_file(voice.file_id)#type:ignore
+    
+    # 3. Скачиваем файл в объект BytesIO (в оперативную память)
+    file_content = await bot.download_file(file_info.file_path)#type:ignore
+    
+    # 4. Отправляем на транскрибацию
+    # Имя файла можно задать произвольное, Whisper API определит формат по контенту
+    text = await transcribe_voice(file_content.read(), f"{voice.file_unique_id}.ogg")#type:ignore
+    
+    # 5. Отвечаем пользователю текстом
+    if text:
+        await process_user_message(message, text)
+    else:
+        await message.reply("К сожалению, не удалось преобразовать голос в текст.")
+
+
+
 @router.message(F.reply_to_message)
 async def handle_reply(message: Message):
     """
@@ -515,19 +547,11 @@ async def handle_reply(message: Message):
 
     
 
-# --------------------------
-
-@router.message(flags={"long_operation": "check_limits"})
-async def new_task(message: Message):
-    """Обработчик добавления новой задачи"""
-    logger.debug(f"поступило сообщение {message.text}")
+async def process_user_message(message: Message, text:str):
     if message.from_user is not None:
         user_id = message.from_user.id
     else: raise ValueError("сообщение из неизвестного источника")
 
-    if message.text is None:
-        await message.answer("введите текст")
-        return
     async with get_session() as s:
         dt_string = Formater.get_user_time(s, user_id)
 
@@ -537,14 +561,14 @@ async def new_task(message: Message):
 
         # проверка на длину (500 слов)
         MAX_TEXT_LENGTH = 6*500
-        if len(message.text) > MAX_TEXT_LENGTH:
+        if len(text) > MAX_TEXT_LENGTH:
             await message.answer("Слишком длинный текст")
             return
         
 
         logger.debug(f"передаю в функцию c LLM время и дату: {dt_string}")
         print("до обращения к нейросети в хендлере")
-        data_message = await AiService.ai_parse(f"сегодня {dt_string}, {message.text}", user_id)
+        data_message = await AiService.ai_parse(f"сегодня {dt_string}, {text}", user_id)
         print("после")
 
         if isinstance(data_message, str):
@@ -581,3 +605,17 @@ async def new_task(message: Message):
                     parse_mode="Markdown"
                 )
 
+
+
+# --------------------------
+
+@router.message(flags={"long_operation": "check_limits"})
+async def new_task(message: Message):
+    """Обработчик добавления новой задачи"""
+    logger.debug(f"поступило сообщение {message.text}")
+
+    if message.text is None:
+        await message.answer("введите текст")
+        return
+    text = message.text
+    await process_user_message(message, text)
