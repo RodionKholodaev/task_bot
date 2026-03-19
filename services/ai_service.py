@@ -6,7 +6,7 @@ class AiService:
         """вызов функции парсинга нейросетью и проверка подписки"""
         user_description = await UserRepository.get_description(session, user_id)
         if user_description is None: user_description = "описания пользователя нет"
-        return parse_text(description, user_description)
+        return await parse_text(description, user_description)
 
     @staticmethod
     async def ai_edit(description: str, date_and_time: str, user_id, session):

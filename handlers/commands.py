@@ -518,7 +518,7 @@ async def handle_reply(message: Message):
         description = await Formater.make_description(s, id, type, dt_string,request, week_info)
         if description is None: raise ValueError("почему-то не получилось создать описание")
 
-        result = await AiService.ai_edit(description, dt_string, user_id)
+        result = await AiService.ai_edit(description, dt_string, user_id, s)
 
     # ------------------------- 
         # удаляем старую сущность (задачи или покупка)
@@ -581,7 +581,7 @@ async def process_user_message(message: Message, text:str):
 
         logger.debug(f"передаю в функцию c LLM время и дату: {dt_string}")
         print("до обращения к нейросети в хендлере")
-        data_message = await AiService.ai_parse(f"сегодня {dt_string}, {text}", user_id)
+        data_message = await AiService.ai_parse(f"сегодня {dt_string}, {text}", user_id, s)
         print("после")
 
         if isinstance(data_message, str):
