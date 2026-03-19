@@ -33,7 +33,8 @@ def setup_logging():
         "aiogram",     
         "sqlalchemy",  
         "apscheduler", 
-        "yookassa",    
+        "yookassa",
+        "aiosqlite"    
     ]
 
     for logger_name in quiet_loggers:

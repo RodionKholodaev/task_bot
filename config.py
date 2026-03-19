@@ -5,17 +5,23 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-DB_URL = os.getenv("DATABASE_URL", "sqlite:///tasks.db")
+DB_URL = os.getenv("DB_URL")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 YOOKASSA_TOKEN = os.getenv("YOOKASSA_TOKEN")
 SECRET_KEY = os.getenv("SECRET_KEY")
 SHOP_ID = os.getenv("SHOP_ID")
-
+WHISPER_API_URL = os.getenv("WHISPER_API_URL")
 # Если захочу считать отдельно покупки и задачи
 MAX_TASK_COUNT = 5000
 MAX_ITEM_COUNT = 5000
 
 MAX_COUNT = 5000
+
+if not WHISPER_API_URL:
+    raise RuntimeError("WHISPER_API_URL is not set in enviroment")
+
+if not DB_URL:
+    raise RuntimeError("DB_URL is not set in enviroment")
 
 if not BOT_TOKEN:
     raise RuntimeError("SECRET_KEY is not set in environment")

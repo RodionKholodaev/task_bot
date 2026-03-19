@@ -9,13 +9,14 @@ from .scheduler_config import scheduler
 from .jobs import send_daily_notification, send_task_reminder
 from db.user_repository import UserRepository
 from db.task_repository import TaskRepository
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
 
-def _get_user_notify_time(user_id: int) -> Optional[dict]:
+async def _get_user_notify_time(s: AsyncSession, user_id: int) -> Optional[dict]:
     """Получить notify_time и utc_offset пользователя"""
-    user = UserRepository.get_user_settings(user_id)
+    user = await UserRepository.get_user_settings(s, user_id)
     if user and user.notify_time: #type: ignore
         return {
             'hour': user.notify_time.hour,
@@ -124,14 +125,14 @@ def remove_task_reminder_job(task_id: int):
         logger.warning(f"Не удалось удалить reminder-джобу {task_id}: {e}")
 
 
-def load_all_jobs_from_db():
+async def load_all_jobs_from_db(s: AsyncSession):
     """
     Загрузить все джобы из БД при старте бота.
     Вызывается один раз при инициализации.
     """
     logger.info("Загрузка джобов из БД...")
     
-    users = UserRepository.get_all_users()
+    users = await UserRepository.get_all_users(s)
     if not users:
         logger.info("Нет пользователей для загрузки джобов")
         return
@@ -149,7 +150,7 @@ def load_all_jobs_from_db():
         )
         
         # Создаём reminder-джобы для всех активных задач с remind_date
-        tasks = TaskRepository.get_tasks_with_reminder(user.user_id) #type: ignore
+        tasks = await TaskRepository.get_tasks_with_reminder(s, user.user_id) #type: ignore
         for task in tasks:
             if task.remind_date and not task.is_completed: #type: ignore
                 create_task_reminder_job(

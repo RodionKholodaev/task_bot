@@ -6,7 +6,7 @@ from aiogram import Bot, Dispatcher
 from config import BOT_TOKEN
 if not BOT_TOKEN: raise ValueError("нет токена бота")
 
-from db.database import init_db
+from db.database import init_db, get_session
 from handlers.commands import router as commands_router
 from handlers.callbacks import router as callbacks_router
 
@@ -34,13 +34,15 @@ async def main():
     logger.info("Бот начал работу")
     
     # Инициализация БД
-    init_db()
+    await init_db()
     
     # Инициализация планировщика
     init_scheduler()
     
     # Загрузка всех джобов из БД
-    load_all_jobs_from_db()
+    async with get_session() as s:
+        await load_all_jobs_from_db(s)
+        
     logger.info("Все джобы загружены из БД")
     
     # Запуск polling

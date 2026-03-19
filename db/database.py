@@ -1,19 +1,24 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from config import DB_URL
 from models import Base
 
-# инициализация БД
-engine = create_engine(DB_URL, echo=False)
-SessionLocal = sessionmaker(bind=engine)
+# инициализация async БД
+# DB_URL должен быть вида sqlite+aiosqlite:///tasks.db (или другой async-драйвер)
+engine = create_async_engine(DB_URL, echo=False, future=True) #type: ignore
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
 
-
-def init_db():
+async def init_db():
     """Создание таблиц при запуске"""
-    Base.metadata.create_all(bind=engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
-def get_session() -> Session:
-    """Получение сессии БД"""
-    return SessionLocal()
+
+def get_session() -> AsyncSession:
+    """Получение асинхронной сессии БД"""
+    return AsyncSessionLocal()
 
 

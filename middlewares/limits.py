@@ -3,6 +3,7 @@ from aiogram import BaseMiddleware
 from aiogram.types import Message
 from models import SubscriptionTypes
 from aiogram.dispatcher.flags import get_flag
+from db.database import get_session
 
 # Импортируйте ваши сессии БД и модели
 from db.payments_repository import PaymentsRepository
@@ -28,7 +29,8 @@ class TaskLimitMiddleware(BaseMiddleware):
         user_id = event.from_user.id
         
         # достаем данные аккаунта (метод в репозитории)
-        account = PaymentsRepository.get_user_account(user_id)
+        async with get_session() as s:
+            account = await PaymentsRepository.get_user_account(s, user_id)
         
         if not account: # пускай хендлер сам разбирается
             return await handler(event, data)
