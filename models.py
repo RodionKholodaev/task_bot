@@ -48,8 +48,8 @@ class ShoppingItem(Base):
 
 
 class SubscriptionTypes(enum.Enum):
-    FREE = "free"
-    PREMIUM = "premium"
+    FREE = "FREE"
+    PREMIUM = "PREMIUM"
 
 
 class UserSettings(Base):
@@ -67,11 +67,13 @@ class UserAccount(Base):
     __tablename__="user_account"
 
     user_id = Column(Integer, primary_key=True)
-    task_count = Column(Integer, default=50) # нужно увеличивать и уменьшать кода нужно
-    item_count = Column(Integer, default=50) # нужно увеличивать и уменьшать кода нужно
+    task_count = Column(Integer, default=0) # нужно увеличивать и уменьшать когда нужно
+    item_count = Column(Integer, default=0) # нужно увеличивать и уменьшать кода нужно
 
     subscription = Column(Enum(SubscriptionTypes),default=SubscriptionTypes.FREE, nullable=False )
     subscription_until = Column(DateTime, nullable=True)
+
+    last_seen = Column(Date, default=datetime.date.today) # дата последнего действия пользователя
 
 # платежи
 class Payment(Base):

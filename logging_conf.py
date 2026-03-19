@@ -1,6 +1,25 @@
 import logging
+from logging.handlers import RotatingFileHandler
+import os
+
 
 def setup_logging():
+
+    os.makedirs("logs", exist_ok=True)
+    
+    # когда файл достигает 5 МБ, он переименовывается и создается новый. храним до 3 старых файлов
+    file_handler = RotatingFileHandler(
+        'logs/bot.log',
+        maxBytes=10*1024*1024,  # 10 МБ
+        backupCount=3,          # хранить 3 старых файла
+        encoding='utf-8'
+    )
+    
+    file_handler.setLevel(logging.ERROR)
+    file_handler.setFormatter(logging.Formatter(
+        "%(asctime)s | %(levelname)s | %(name)s | %(filename)s:%(lineno)d | %(funcName)s | %(message)s"
+    ))
+
     logging.basicConfig(
         level=logging.DEBUG,
         format="%(levelname)s | %(name)s | %(filename)s:%(lineno)d | %(funcName)s | %(message)s"

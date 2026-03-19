@@ -58,7 +58,7 @@ async def ask_llm(description: str, system_msg:str) -> dict:
 
     return {"error": error}
 
-async def parse_text(description: str) -> dict: 
+async def parse_text(description: str, user_description: str) -> dict: 
     print("попал в parse_text")
     system_msg = """
     Ты — ассистент по тайм-менеджменту. Твоя задача — понять сообщение пользователя и определить, содержит ли оно одну или несколько задач или покупок.
@@ -381,11 +381,13 @@ async def parse_text(description: str) -> dict:
 
 
     """
+    user_info=f"Вот описание пользователя, учитывае его при обработке его запроса:\n {user_description}"
+    system_msg = system_msg + user_info
     data = await ask_llm(description, system_msg)
     return data
     
 
-async def edit_entity(description: str, date_and_time: str) -> dict:
+async def edit_entity(description: str, date_and_time: str, user_description: str) -> dict:
 
     system_msg = f'''
     Ты — ассистент по тайм-менеджменту. Твоя задача — получить задачу или список покупок и комментарий к ним,
@@ -786,6 +788,8 @@ async def edit_entity(description: str, date_and_time: str) -> dict:
     - Никогда не меняй тип (tasks/shopping_list) без явной просьбы пользователя
     - НЕ МЕНЯЙ ПОЛЯ КОТОРЫЕ ПОЛЬЗОВАТЕЛЬ НЕ ПРОСИТ ИЗМЕНИТЬ!
     '''
+    user_info=f"Вот описание пользователя, учитывае его при обработке его запроса:\n {user_description}"
+    system_msg = system_msg + user_info
 
     data = await ask_llm(description, system_msg)
     return data

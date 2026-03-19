@@ -193,8 +193,8 @@ class Formater:
             f"📁 **Категория:** {cat_text}\n"
             f"📅 **Дата:** {date_text}\n"
             f"⏰ **Время:** {time}\n"
-            f"🚨 **Напоминание дата:** {remind_date_str}\n"
-            f"⏱️ **Напоминание время:** {remind_time}\n"
+            f"🚨 **Дата напоминания:** {remind_date_str}\n"
+            f"⏱️ **Время напоминания:** {remind_time}\n"
             f"🆔 ID задачи: {task.id}"
         )
 
