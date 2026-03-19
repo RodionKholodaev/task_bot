@@ -260,8 +260,12 @@ async def self_description(message: Message, state: FSMContext):
 
     if description:
         await message.answer(
-            "Ваше текущее описание:\n"
-            f"{description}\n"
+            "Ваше текущее описание:"
+        )
+        await message.answer(
+            f"{description}"
+        )
+        await message.answer(
             "Введите новое описание следующим сообщением"
         )
     else:
