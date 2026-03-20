@@ -566,6 +566,7 @@ async def process_user_message(message: Message, text:str, s: AsyncSession):
 
 
     dt_string = Formater.get_user_time(s, user_id)
+    week_info = Formater.get_week_info(s, user_id)
 
     if not dt_string:
         await message.answer("Часовой пояс не найден, добавьте его в настройках")
@@ -577,9 +578,9 @@ async def process_user_message(message: Message, text:str, s: AsyncSession):
         await message.answer("Слишком длинный текст")
         return
     
-
+    promt =f"сегодня {dt_string}, {text}.\n Вот информация о днях недели: {week_info}"
     logger.debug(f"передаю в функцию c LLM время и дату: {dt_string}")
-    data_message = await AiService.ai_parse(f"сегодня {dt_string}, {text}", user_id, s)
+    data_message = await AiService.ai_parse(promt, user_id, s)
 
     if isinstance(data_message, str):
         await message.answer(f"какая-то ошибка с нейросетью. Текст ошибки {data_message}")
