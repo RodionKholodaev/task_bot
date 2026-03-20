@@ -7,6 +7,10 @@ from config import BOT_TOKEN
 if not BOT_TOKEN: raise ValueError("нет токена бота")
 
 from db.database import init_db, get_session
+
+from middlewares.db import DbSessionMiddleware # middleware для проброса сессий в хендлер
+from middlewares.statistic import UpdateActivityMiddleware
+
 from handlers.commands import router as commands_router
 from handlers.callbacks import router as callbacks_router
 
@@ -22,10 +26,13 @@ logger = logging.getLogger(__name__)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
+# middleware для статистики
+dp.update.outer_middleware(DbSessionMiddleware(get_session))
+# middleware для статистики
+dp.update.outer_middleware(UpdateActivityMiddleware())
 # Регистрация роутеров обработчиков
 dp.include_router(commands_router)
 dp.include_router(callbacks_router)
-
 
 async def main():
     """Главная функция запуска бота"""
@@ -34,15 +41,16 @@ async def main():
     logger.info("Бот начал работу")
     
     # Инициализация БД
-    await init_db()
+    await init_db() # type ignore
     
     # Инициализация планировщика
     init_scheduler()
     
     # Загрузка всех джобов из БД
     async with get_session() as s:
-        await load_all_jobs_from_db(s)
+        await load_all_jobs_from_db(s) #type: ignore
         
+
     logger.info("Все джобы загружены из БД")
     
     # Запуск polling

@@ -77,6 +77,12 @@ class UserAccount(Base):
     
     subscription_until: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
+    last_seen: Mapped[date] = mapped_column(
+            Date, 
+            default=date.today,
+            index=True
+        )
+
 class Payment(Base):
     """История платежей"""
     __tablename__ = "payments"

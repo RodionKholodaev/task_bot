@@ -36,10 +36,10 @@ class TaskLimitMiddleware(BaseMiddleware):
             return await handler(event, data)
         
         # для PREMIUM пользователя нет ограничений
-        if account.subscription == SubscriptionTypes.PREMIUM: #type: ignore
+        if account.subscription == SubscriptionTypes.PREMIUM: 
             return await handler(event, data)
 
-        if account.task_count + account.item_count >= MAX_COUNT: #type: ignore
+        if account.task_count + account.item_count >= MAX_COUNT: 
             return await event.answer(
                 f"❌ Лимит задач и покупак исчерпан (макс. {MAX_COUNT}). "
                 "Удалите старые задачи и покупки или обновите подписку."

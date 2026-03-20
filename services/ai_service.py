@@ -11,7 +11,7 @@ class AiService:
     @staticmethod
     async def ai_edit(description: str, date_and_time: str, user_id, session):
         """вызов функции редактирования и проверка подписки"""
-        user_description = await UserRepository.get_description(user_id, session)
+        user_description = await UserRepository.get_description(session, user_id)
         if user_description is None: user_description = "описания пользователя нет"
         return await edit_entity(description, date_and_time, user_description)
         

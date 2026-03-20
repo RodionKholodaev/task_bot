@@ -29,7 +29,7 @@ from services.voice_service import transcribe_voice
 from db.user_repository import UserRepository
 from db.payments_repository import PaymentsRepository
 from db.statistics import Statistics
-from db.database import get_session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import SubscriptionTypes
 
@@ -50,15 +50,13 @@ class ProfileState(StatesGroup):
     waiting_for_description = State()
 
 @router.message(CommandStart())
-async def start(message: Message):
+async def start(message: Message, s: AsyncSession):
     """Обработчик команды /start"""
     if message.from_user is None:
         raise ValueError("У сообщения нет пользователя")
     user_id = message.from_user.id
-
-    async with get_session() as s:
-        
-        await PaymentsRepository.get_started(s, user_id)
+  
+    await PaymentsRepository.get_started(s, user_id)
         
     await message.answer(
         "Привет! 👋 Я твой умный личный менеджер.\n\n"
@@ -107,13 +105,13 @@ async def back(message: Message):
 
 
 @router.message(F.text.in_(TASK_CATEGORY_MAP))
-async def show_task_by_category(message: Message):
+async def show_task_by_category(message: Message, s: AsyncSession):
     """Показать задачи по выбранной категории"""
     if message.from_user is not None:
         user_id = message.from_user.id
     else: raise ValueError("сообщение из неизвестного источника")
-    async with get_session() as s:
-        tasks = await TaskService.get_category_task(s, user_id, message.text) # type: ignore
+
+    tasks = await TaskService.get_category_task(s, user_id, message.text) # type: ignore
 
     if not tasks:
         await message.answer("Задач нет")
@@ -130,13 +128,13 @@ async def show_task_by_category(message: Message):
 
 
 @router.message(F.text.in_(PURCHASE_CATEGORY_MAP))
-async def show_item_by_category(message: Message):
+async def show_item_by_category(message: Message, s: AsyncSession):
     """Показать покупки по выбранной категории"""
     if message.from_user is not None:
         user_id = message.from_user.id
     else: raise ValueError("сообщение из неизвестного источника")
-    async with get_session() as s:
-        items = await ShoppingService.get_category_item(s, user_id, message.text) # type: ignore
+
+    items = await ShoppingService.get_category_item(s, user_id, message.text) # type: ignore
 
     if not items:
         await message.answer("Покупок нет")
@@ -153,13 +151,13 @@ async def show_item_by_category(message: Message):
         )
 
 #  вывод задач на день (вспомогательная функция)
-async def show_tasks_for_day(message: Message, day_shift: int):
+async def show_tasks_for_day(message: Message,s: AsyncSession, day_shift: int):
 
     if message.from_user is not None:
         user_id = message.from_user.id
     else: raise ValueError("сообщение из неизвестного источника")
-    async with get_session() as s:
-        tasks = await TaskService.get_day_tasks(s, user_id, day_shift)
+
+    tasks = await TaskService.get_day_tasks(s, user_id, day_shift)
 
     if not tasks:
         await message.answer("Задач нет 🎉")
@@ -175,24 +173,23 @@ async def show_tasks_for_day(message: Message, day_shift: int):
         )
 
 @router.message(F.text == "📅 Сегодня")
-async def today(message: Message):
-    await show_tasks_for_day(message, day_shift=0)
+async def today(message: Message, s: AsyncSession):
+    await show_tasks_for_day(message, s, day_shift=0)
 
 
 @router.message(F.text == "🌅 Завтра")
-async def tomorrow(message: Message):
-    await show_tasks_for_day(message, day_shift=1)
+async def tomorrow(message: Message, s: AsyncSession):
+    await show_tasks_for_day(message, s, day_shift=1)
 
 @router.message(F.text == "📆 Неделя")
-async def week(message: Message):
+async def week(message: Message, s: AsyncSession):
     """Показать задачи на неделю"""
 
     if message.from_user is not None:
         user_id = message.from_user.id
     else: raise ValueError("сообщение из неизвестного источника")
 
-    async with get_session() as s:
-        tasks = await TaskService.get_week_task(s, user_id)
+    tasks = await TaskService.get_week_task(s, user_id)
 
     if not tasks:
         await message.answer("На неделю задач нет 🎉")
@@ -210,14 +207,13 @@ async def week(message: Message):
 
 
 @router.message(F.text == "📋 Все задачи")
-async def all_tasks(message: Message):
+async def all_tasks(message: Message, s: AsyncSession):
     """Показать все задачи"""
     if message.from_user is not None:
         user_id = message.from_user.id
     else: raise ValueError("сообщение из неизвестного источника")
 
-    async with get_session() as s:
-        tasks = await TaskService.get_all_tasks(s, user_id)
+    tasks = await TaskService.get_all_tasks(s, user_id)
 
     if not tasks:
         await message.answer("Задач нет")
@@ -248,15 +244,14 @@ async def settings(message: Message):
 
 
 @router.message(F.text == "📝 О себе")
-async def self_description(message: Message, state: FSMContext):
+async def self_description(message: Message, state: FSMContext, s: AsyncSession):
     """ввод описания себя"""
     if message.from_user:
         user_id = message.from_user.id
     else:
         raise ValueError("не найден пользователь")
     
-    async with get_session() as s:
-        description = UserRepository.get_description(s, user_id)
+    description = UserRepository.get_description(s, user_id)
 
     if description:
         await message.answer(
@@ -289,7 +284,7 @@ async def skip_description(message: Message, state: FSMContext):
     await state.clear()
 
 @router.message(ProfileState.waiting_for_description)
-async def save_description(message: Message, state: FSMContext):
+async def save_description(message: Message, state: FSMContext, s: AsyncSession):
     if message.from_user is None:
         await message.answer("у сообщения нет пользователя")
         return
@@ -306,12 +301,12 @@ async def save_description(message: Message, state: FSMContext):
         await message.answer("Слишком длинное описание. Максимальная длинна 600 символов")
         return
     # запись в БД
-    async with get_session() as s:
-        await UserRepository.update_description(
-            s,
-            user_id=user_id,
-            description=description
-        )
+
+    await UserRepository.update_description(
+        s,
+        user_id=user_id,
+        description=description
+    )
 
     await message.answer("Описание сохранено ✅", reply_markup=profile_keyboard())
 
@@ -393,14 +388,13 @@ async def statistic(message: Message):
         await message.answer("😕 К сожалению, сейчас не удалось загрузить статистику. Попробуйте позже.")
 
 @router.message(F.text == "💎 Подписка")
-async def subscription(message: Message):
+async def subscription(message: Message, s: AsyncSession):
     if message.from_user is None:
         raise ValueError("Сообщение не от пользователя")
     else:
         user_id = message.from_user.id
 
-        async with get_session() as s:
-            user_sub = await PaymentsRepository.get_user_sub(s, user_id)
+        user_sub = await PaymentsRepository.get_user_sub(s, user_id)
 
         if user_sub is None:
             await message.answer("Вас пока нет в нашей базе данных\n Создайте задачу")
@@ -416,20 +410,21 @@ async def subscription(message: Message):
 
 
 @router.message(F.text.regexp(r"^[+-]?\d+\s\d{2}:\d{2}$"))
-async def save_settings(message: Message):
+async def save_settings(message: Message, s: AsyncSession):
     """Сохранить пользовательские настройки"""
     if message.from_user is not None:
         user_id = message.from_user.id
     else: raise ValueError("сообщение из неизвестного источника")
 
     offset_str, time_str = message.text.split() # type: ignore
-    async with get_session() as s:
-        await UserRepository.upsert_user_settings(
-            s,
-            user_id,
-            int(offset_str),
-            datetime.strptime(time_str, "%H:%M").time()
-        )
+
+    await UserRepository.upsert_user_settings(
+        s,
+        user_id,
+        int(offset_str),
+        datetime.strptime(time_str, "%H:%M").time()
+    )
+
     await message.answer("Настройки сохранены ✅", reply_markup=new_main_keyboard())
 
 
@@ -439,7 +434,7 @@ async def process_pre_checkout_query(pre_checkout_query):
     await pre_checkout_query.answer(ok=True)
 
 @router.message(F.successful_payment)
-async def successful_payment(message: Message):
+async def successful_payment(message: Message, s: AsyncSession):
 
     if message.from_user is None: 
         raise ValueError("у сообщения нет пользователя")
@@ -452,9 +447,9 @@ async def successful_payment(message: Message):
         user_id = message.from_user.id
         amount = payment.total_amount/100 # изначально в копейках
 
-        async with get_session() as s:
-            await PaymentsRepository.save_payment(s, user_id, tg_payment_id, provider_payment_id, amount)
-            await PaymentsRepository.change_user_sub(s, user_id, SubscriptionTypes.PREMIUM)
+
+        await PaymentsRepository.save_payment(s, user_id, tg_payment_id, provider_payment_id, amount)
+        await PaymentsRepository.change_user_sub(s, user_id, SubscriptionTypes.PREMIUM)
 
         # выдать подписку
         await message.answer("Оплата прошла успешно!")
@@ -464,7 +459,7 @@ async def successful_payment(message: Message):
 
 # обработка голосового сообщения
 @router.message(F.voice, flags={"long_operation": "check_limits"})
-async def handle_voice_message(message: Message, bot: Bot):
+async def handle_voice_message(message: Message, bot: Bot, s: AsyncSession):
     # 1. Отправляем статус "печать", чтобы пользователь видел активность
     await message.bot.send_chat_action(chat_id=message.chat.id, action="typing") #type:ignore
     
@@ -481,14 +476,14 @@ async def handle_voice_message(message: Message, bot: Bot):
     
     # 5. Отвечаем пользователю текстом
     if text:
-        await process_user_message(message, text)
+        await process_user_message(message, text, s)
     else:
         await message.reply("К сожалению, не удалось преобразовать голос в текст.")
 
 
 
 @router.message(F.reply_to_message)
-async def handle_reply(message: Message):
+async def handle_reply(message: Message, s: AsyncSession):
     """
     Обработчик для ответов на сообщения бота, чтобы редактировать задачи и покупки.
     """
@@ -496,39 +491,39 @@ async def handle_reply(message: Message):
         user_id = message.from_user.id
     else: raise ValueError("сообщение из неизвестного источника")
 
-    async with get_session() as s:
-        dt_string = await Formater.get_user_time(s, user_id)
-        week_info = await Formater.get_week_info(s, user_id)
 
-        if not dt_string:
-            await message.answer("Часовой пояс не найден, добавьте его в настройках")
-            return
+    dt_string = await Formater.get_user_time(s, user_id)
+    week_info = await Formater.get_week_info(s, user_id)
 
-        if message.reply_to_message is not None:
-            entity_text = message.reply_to_message.text
-        else: raise ValueError("нет текста в сообщении")
+    if not dt_string:
+        await message.answer("Часовой пояс не найден, добавьте его в настройках")
+        return
+
+    if message.reply_to_message is not None:
+        entity_text = message.reply_to_message.text
+    else: raise ValueError("нет текста в сообщении")
 
 
-        id_type = Parser.get_id_info(entity_text)
+    id_type = Parser.get_id_info(entity_text)
 
-        type = id_type["type"]
-        id = id_type["id"]
-        request = message.text
+    type = id_type["type"]
+    id = id_type["id"]
+    request = message.text
 
-        if request is None:
-            await message.answer("введите текст для редактирования")
-            return
+    if request is None:
+        await message.answer("введите текст для редактирования")
+        return
 
-        description = await Formater.make_description(s, id, type, dt_string,request, week_info)
-        if description is None: raise ValueError("почему-то не получилось создать описание")
+    description = await Formater.make_description(s, id, type, dt_string,request, week_info)
+    if description is None: raise ValueError("почему-то не получилось создать описание")
 
-        result = await AiService.ai_edit(description, dt_string, user_id, s)
+    result = await AiService.ai_edit(description, dt_string, user_id, s)
 
-    # ------------------------- 
-        # удаляем старую сущность (задачи или покупка)
-        await MessageService.delete_entity(s, id, type, user_id)
-        # сохраняем новую(ые) сущность(и)
-        entities = await MessageService.make_save_new_entity(s, result, user_id)
+# ------------------------- 
+    # удаляем старую сущность (задачи или покупка)
+    await MessageService.delete_entity(s, id, type, user_id)
+    # сохраняем новую(ые) сущность(и)
+    entities = await MessageService.make_save_new_entity(s, result, user_id)
 
 
     if entities is None:
@@ -564,41 +559,41 @@ async def handle_reply(message: Message):
 
     
 
-async def process_user_message(message: Message, text:str):
+async def process_user_message(message: Message, text:str, s: AsyncSession):
     if message.from_user is not None:
         user_id = message.from_user.id
     else: raise ValueError("сообщение из неизвестного источника")
 
-    async with get_session() as s:
-        dt_string = Formater.get_user_time(s, user_id)
 
-        if not dt_string:
-            await message.answer("Часовой пояс не найден, добавьте его в настройках")
-            return
+    dt_string = Formater.get_user_time(s, user_id)
 
-        # проверка на длину (500 слов)
-        MAX_TEXT_LENGTH = 6*500
-        if len(text) > MAX_TEXT_LENGTH:
-            await message.answer("Слишком длинный текст")
-            return
-        
+    if not dt_string:
+        await message.answer("Часовой пояс не найден, добавьте его в настройках")
+        return
 
-        logger.debug(f"передаю в функцию c LLM время и дату: {dt_string}")
-        print("до обращения к нейросети в хендлере")
-        data_message = await AiService.ai_parse(f"сегодня {dt_string}, {text}", user_id, s)
-        print("после")
+    # проверка на длину (500 слов)
+    MAX_TEXT_LENGTH = 6*500
+    if len(text) > MAX_TEXT_LENGTH:
+        await message.answer("Слишком длинный текст")
+        return
+    
 
-        if isinstance(data_message, str):
-            await message.answer(f"какая-то ошибка с нейросетью. Текст ошибки {data_message}")
-            return
+    logger.debug(f"передаю в функцию c LLM время и дату: {dt_string}")
+    print("до обращения к нейросети в хендлере")
+    data_message = await AiService.ai_parse(f"сегодня {dt_string}, {text}", user_id, s)
+    print("после")
 
-        
-        data_list = data_message.get("items")
-        if not data_list:
-            await message.answer("Не получилось выделить задачу из вашего текста. Пожалуйста напишите подробнее")
-            return
-        print("до сохранения объекта")
-        entitys = await MessageService.make_save_new_entity(s, data_message, user_id)
+    if isinstance(data_message, str):
+        await message.answer(f"какая-то ошибка с нейросетью. Текст ошибки {data_message}")
+        return
+
+    
+    data_list = data_message.get("items")
+    if not data_list:
+        await message.answer("Не получилось выделить задачу из вашего текста. Пожалуйста напишите подробнее")
+        return
+    print("до сохранения объекта")
+    entitys = await MessageService.make_save_new_entity(s, data_message, user_id)
     if entitys is None:
         raise ValueError("ошибка при сохранении сущности")
 
@@ -627,7 +622,7 @@ async def process_user_message(message: Message, text:str):
 # --------------------------
 
 @router.message(flags={"long_operation": "check_limits"})
-async def new_task(message: Message):
+async def new_task(message: Message, s: AsyncSession):
     """Обработчик добавления новой задачи"""
     logger.debug(f"поступило сообщение {message.text}")
 
@@ -635,4 +630,4 @@ async def new_task(message: Message):
         await message.answer("введите текст")
         return
     text = message.text
-    await process_user_message(message, text)
+    await process_user_message(message, text, s)
