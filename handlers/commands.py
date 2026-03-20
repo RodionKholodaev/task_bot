@@ -460,21 +460,21 @@ async def successful_payment(message: Message, s: AsyncSession):
 # обработка голосового сообщения
 @router.message(F.voice, flags={"long_operation": "check_limits"})
 async def handle_voice_message(message: Message, bot: Bot, s: AsyncSession):
-    # 1. Отправляем статус "печать", чтобы пользователь видел активность
+    # отправляем статус "печать", чтобы пользователь видел активность
     await message.bot.send_chat_action(chat_id=message.chat.id, action="typing") #type:ignore
     
-    # 2. Получаем информацию о файле
+    # получаем информацию о файле
     voice = message.voice
     file_info = await bot.get_file(voice.file_id)#type:ignore
     
-    # 3. Скачиваем файл в объект BytesIO (в оперативную память)
+    # скачиваем файл в объект BytesIO (в оперативную память)
     file_content = await bot.download_file(file_info.file_path)#type:ignore
     
-    # 4. Отправляем на транскрибацию
-    # Имя файла можно задать произвольное, Whisper API определит формат по контенту
+    # отправляем на транскрибацию
+    await message.answer("Сообщение в обработке...")
     text = await transcribe_voice(file_content.read(), f"{voice.file_unique_id}.ogg")#type:ignore
     
-    # 5. Отвечаем пользователю текстом
+    # отвечаем пользователю текстом
     if text:
         await process_user_message(message, text, s)
     else:
@@ -579,9 +579,7 @@ async def process_user_message(message: Message, text:str, s: AsyncSession):
     
 
     logger.debug(f"передаю в функцию c LLM время и дату: {dt_string}")
-    print("до обращения к нейросети в хендлере")
     data_message = await AiService.ai_parse(f"сегодня {dt_string}, {text}", user_id, s)
-    print("после")
 
     if isinstance(data_message, str):
         await message.answer(f"какая-то ошибка с нейросетью. Текст ошибки {data_message}")
