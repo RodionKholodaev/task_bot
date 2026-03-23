@@ -191,10 +191,10 @@ async def parse_text(description: str, user_description: str, extra_info: str) -
     "items": [
         {
         "category": "short_5 | short_30 | short_120 | long",
-        "date": "YYYY-MM-DD или null",
-        "time": "HH:MM или null",
-        "remind_date": "YYYY-MM-DD или null",
-        "remind_time": "HH:MM или null",
+        "date": "YYYY-MM-DD или None",
+        "time": "HH:MM или None",
+        "remind_date": "YYYY-MM-DD или None",
+        "remind_time": "HH:MM или None",
         "task": "полный текст задачи пользователя"
         }
     ]
@@ -229,13 +229,13 @@ async def parse_text(description: str, user_description: str, extra_info: str) -
 
     ЕСЛИ НЕ УКАЗАНА ДАТА
 
-    date = null
+    date = None
 
     --------------------------------------------------
 
     ЕСЛИ НЕ УКАЗАНО ВРЕМЯ
 
-    time = null
+    time = None
 
     --------------------------------------------------
 
@@ -260,13 +260,13 @@ async def parse_text(description: str, user_description: str, extra_info: str) -
 
     "сегодня"
 
-    date НЕ может быть null
+    date НЕ может быть None
 
     Если написано:
 
     "в 18"
 
-    time НЕ может быть null
+    time НЕ может быть None
 
     Если написано:
 
@@ -278,8 +278,8 @@ async def parse_text(description: str, user_description: str, extra_info: str) -
 
     "сегодня вечером"
 
-    date НЕ может быть null  
-    time НЕ может быть null
+    date НЕ может быть None  
+    time НЕ может быть None
 
     --------------------------------------------------
 
@@ -307,8 +307,8 @@ async def parse_text(description: str, user_description: str, extra_info: str) -
         {
         "category": "grocery | pharmacy | household | beauty | electronics | clothes | other",
         "item": "название товара",
-        "amount": "число или null",
-        "unit": "кг | л | шт | м | null"
+        "amount": "число или None",
+        "unit": "кг | л | шт | м | None"
         }
     ]
     }
@@ -347,50 +347,290 @@ async def parse_text(description: str, user_description: str, extra_info: str) -
 
     --------------------------------------------------
 
-    ПРИМЕРЫ
+    ПРИМЕР 1 — несколько задач с относительными датами
+    Вход:  
+    сегодня отправить отчет клиенту, через 3 дня спросить радмира про бота и завтра вечером сходить в зал
 
-    ввод:
+    Ответ:
 
-    сегодня Monday, 2026-03-23 10:00,
-    нужно сегодня вечером сходить в зал
-
-    ответ:
-
-    {
-    "type": "tasks",
-    "items": [
-        {
-        "category": "short_120",
-        "date": "2026-03-23",
-        "time": "18:00",
-        "remind_date": null,
-        "remind_time": null,
-        "task": "сходить в зал"
-        }
-    ]
+    {  
+    "type": "tasks",  
+    "items": [  
+        {  
+        "category": "short_30",  
+        "date": "2026-03-23",  
+        "time": "",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "отправить отчет клиенту"  
+        },  
+        {  
+        "category": "short_30",  
+        "date": "2026-03-26",  
+        "time": "",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "спросить радмира про бота"  
+        },  
+        {  
+        "category": "short_120",  
+        "date": "2026-03-24",  
+        "time": "18:00",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "сходить в зал"  
+        }  
+    ]  
     }
 
-    --------------------------------------------------
 
-    ввод:
 
-    сегодня Monday, 2026-03-23 10:00,
-    посмотреть завтра https://example.com
+    ПРИМЕР 2 — задачи с напоминанием и временем
+    Вход:  
+    завтра в 14 созвон с командой напомни за час, вечером проверить сервер и через 2 дня написать инвестору
 
-    ответ:
+    Ответ:
 
-    {
-    "type": "tasks",
-    "items": [
-        {
-        "category": "short_30",
-        "date": "2026-03-24",
-        "time": null,
-        "remind_date": null,
-        "remind_time": null,
-        "task": "посмотреть https://example.com"
-        }
-    ]
+    {  
+    "type": "tasks",  
+    "items": [  
+        {  
+        "category": "short_30",  
+        "date": "2026-03-24",  
+        "time": "14:00",  
+        "remind_date": "2026-03-24",  
+        "remind_time": "13:00",  
+        "task": "созвон с командой"  
+        },  
+        {  
+        "category": "short_30",  
+        "date": "2026-03-23",  
+        "time": "18:00",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "проверить сервер"  
+        },  
+        {  
+        "category": "short_30",  
+        "date": "2026-03-25",  
+        "time": "",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "написать инвестору"  
+        }  
+    ]  
+    }
+
+
+
+    ПРИМЕР 3 — срочная задача через время
+    Вход:  
+    через час выключить духовку и завтра утром купить билет на поезд
+
+    Ответ:
+
+    {  
+    "type": "tasks",  
+    "items": [  
+        {  
+        "category": "short_5",  
+        "date": "2026-03-23",  
+        "time": "12:19",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "выключить духовку"  
+        },  
+        {  
+        "category": "short_30",  
+        "date": "2026-03-24",  
+        "time": "09:00",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "купить билет на поезд"  
+        }  
+    ]  
+    }
+
+
+
+    ПРИМЕР 4 — задачи со сроком (deadline)
+    Вход:  
+    подготовить презентацию до пятницы и сегодня посмотреть документацию
+
+    Ответ:
+
+    {  
+    "type": "tasks",  
+    "items": [  
+        {  
+        "category": "long",  
+        "date": "2026-03-27",  
+        "time": "",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "подготовить презентацию"  
+        },  
+        {  
+        "category": "short_30",  
+        "date": "2026-03-23",  
+        "time": "",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "посмотреть документацию"  
+        }  
+    ]  
+    }
+
+
+
+    ПРИМЕР 5 — несколько задач разработчика (реалистичный сценарий)
+    Вход:  
+    завтра исправить баг с авторизацией, проверить логи сервера и вечером написать пользователю отчет
+
+    Ответ:
+
+    {  
+    "type": "tasks",  
+    "items": [  
+        {  
+        "category": "short_120",  
+        "date": "2026-03-24",  
+        "time": "",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "исправить баг с авторизацией"  
+        },  
+        {  
+        "category": "short_30",  
+        "date": "2026-03-23",  
+        "time": "",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "проверить логи сервера"  
+        },  
+        {  
+        "category": "short_30",  
+        "date": "2026-03-23",  
+        "time": "18:00",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "написать пользователю отчет"  
+        }  
+    ]  
+    }
+
+
+
+    ПРИМЕР 6 — сложный список покупок с количеством
+    Вход:  
+    два литра молока, 500 грамм курицы, десяток яиц и зубная паста
+
+    Ответ:
+
+    {  
+    "type": "shopping_list",  
+    "items": [  
+        {  
+        "category": "grocery",  
+        "item": "молоко",  
+        "amount": "2.0",  
+        "unit": "л"  
+        },  
+        {  
+        "category": "grocery",  
+        "item": "курица",  
+        "amount": "0.5",  
+        "unit": "кг"  
+        },  
+        {  
+        "category": "grocery",  
+        "item": "яйца",  
+        "amount": "10",  
+        "unit": "шт"  
+        },  
+        {  
+        "category": "beauty",  
+        "item": "зубная паста",  
+        "amount": "",  
+        "unit": ""  
+        }  
+    ]  
+    }
+
+
+
+    ПРИМЕР 7 — покупки одной фразой
+    Вход:  
+    нужно купить батарейки, шампунь, средство для мытья посуды и 3 рулона туалетной бумаги
+
+    Ответ:
+
+    {  
+    "type": "shopping_list",  
+    "items": [  
+        {  
+        "category": "electronics",  
+        "item": "батарейки",  
+        "amount": "",  
+        "unit": ""  
+        },  
+        {  
+        "category": "beauty",  
+        "item": "шампунь",  
+        "amount": "",  
+        "unit": ""  
+        },  
+        {  
+        "category": "household",  
+        "item": "средство для мытья посуды",  
+        "amount": "",  
+        "unit": ""  
+        },  
+        {  
+        "category": "household",  
+        "item": "туалетная бумага",  
+        "amount": "3.0",  
+        "unit": "шт"  
+        }  
+    ]  
+    }
+
+    ---
+
+    ПРИМЕР 8 — покупки с дробными значениями
+    Вход:  
+    купить 1.5 кг картошки, литр сока, пластырь и лампочку
+
+    Ответ:
+
+    {  
+    "type": "shopping_list",  
+    "items": [  
+        {  
+        "category": "grocery",  
+        "item": "картошка",  
+        "amount": "1.5",  
+        "unit": "кг"  
+        },  
+        {  
+        "category": "grocery",  
+        "item": "сок",  
+        "amount": "1.0",  
+        "unit": "л"  
+        },  
+        {  
+        "category": "pharmacy",  
+        "item": "пластырь",  
+        "amount": "",  
+        "unit": ""  
+        },  
+        {  
+        "category": "electronics",  
+        "item": "лампочка",  
+        "amount": "",  
+        "unit": ""  
+        }  
+    ]  
     }
 
     --------------------------------------------------
@@ -417,7 +657,7 @@ async def parse_text(description: str, user_description: str, extra_info: str) -
 
 async def edit_entity(description: str, date_and_time: str, user_description: str, extra_info) -> dict:
 
-    system_msg = f"""
+    system_msg = """
     ROLE
 
     Ты — ассистент по редактированию задач и покупок.
@@ -482,14 +722,6 @@ async def edit_entity(description: str, date_and_time: str, user_description: st
 
     --------------------------------------------------
 
-    ТЕКУЩЕЕ ВРЕМЯ
-
-    сейчас:
-
-    {date_and_time}
-
-    --------------------------------------------------
-
     ОБРАБОТКА ДАТЫ
 
     сегодня → текущая дата
@@ -516,19 +748,19 @@ async def edit_entity(description: str, date_and_time: str, user_description: st
 
     ФОРМАТ ДЛЯ ЗАДАЧ
 
-    {{
+    {
     "type": "tasks",
     "items": [
-        {{
+        {
         "category": "short_5 | short_30 | short_120 | long",
-        "date": "YYYY-MM-DD или null",
-        "time": "HH:MM или null",
-        "remind_date": "YYYY-MM-DD или null",
-        "remind_time": "HH:MM или null",
+        "date": "YYYY-MM-DD или None",
+        "time": "HH:MM или None",
+        "remind_date": "YYYY-MM-DD или None",
+        "remind_time": "HH:MM или None",
         "task": "полный текст задачи"
-        }}
+        }
     ]
-    }}
+    }
 
     --------------------------------------------------
 
@@ -543,17 +775,17 @@ async def edit_entity(description: str, date_and_time: str, user_description: st
 
     ФОРМАТ ДЛЯ ПОКУПОК
 
-    {{
+    {
     "type": "shopping_list",
     "items": [
-        {{
+        {
         "category": "grocery | pharmacy | household | beauty | electronics | clothes | other",
         "item": "название товара",
-        "amount": "число или null",
-        "unit": "кг | л | шт | м | null"
-        }}
+        "amount": "число или None",
+        "unit": "кг | л | шт | м | None"
+        }
     ]
-    }}
+    }
 
     --------------------------------------------------
 
@@ -598,46 +830,431 @@ async def edit_entity(description: str, date_and_time: str, user_description: st
 
     --------------------------------------------------
 
-    ПРИМЕР 1
+    ПРИМЕР 1 - назначить на завтра
 
     Вход:
-
-    Задача:
-
-    {{
+    Вот моя задача:
+    {
     "type": "tasks",
     "items": [
-        {{
+        {
         "category": "short_30",
-        "date": null,
-        "time": null,
-        "remind_date": null,
-        "remind_time": null,
+        "date": "",
+        "time": "",
+        "remind_date": "",
+        "remind_time": "",
         "task": "Сходить в пятерочку"
-        }}
+        }
     ]
-    }}
-
-    Комментарий:
-
-    Сегодня
+    }
+    Вот моя просьба: Сегодня
 
     Ответ:
 
-    {{
+    {
     "type": "tasks",
     "items": [
-        {{
+        {
         "category": "short_30",
         "date": "2026-02-27",
-        "time": null,
-        "remind_date": null,
-        "remind_time": null,
+        "time": None,
+        "remind_date": "None",
+        "remind_time": None,
         "task": "Сходить в пятерочку"
-        }}
+        }
     ]
-    }}
+    }
 
+    ПРИМЕР 2 — перенести на завтра
+    Вход:
+
+    {  
+    "type": "tasks",  
+    "items": [  
+        {  
+        "category": "short_120",  
+        "date": "2026-02-27",  
+        "time": "",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "Сходить в зал"  
+        }  
+    ]  
+    }
+
+    Вот моя просьба: Перенеси на завтра
+
+    Ответ:
+
+    {  
+    "type": "tasks",  
+    "items": [  
+        {  
+        "category": "short_120",  
+        "date": "2026-02-28",  
+        "time": "",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "Сходить в зал"  
+        }  
+    ]  
+    }
+
+    ---
+
+    ПРИМЕР 3 — установить время
+    Вход:
+
+    {  
+    "type": "tasks",  
+    "items": [  
+        {  
+        "category": "short_120",  
+        "date": "2026-02-27",  
+        "time": "",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "Сходить в зал"  
+        }  
+    ]  
+    }
+
+    Вот моя просьба: в 19
+
+    Ответ:
+
+    {  
+    "type": "tasks",  
+    "items": [  
+        {  
+        "category": "short_120",  
+        "date": "2026-02-27",  
+        "time": "19:00",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "Сходить в зал"  
+        }  
+    ]  
+    }
+
+    ---
+
+    ПРИМЕР 4 — напомни через час
+    Вход:
+
+    {  
+    "type": "tasks",  
+    "items": [  
+        {  
+        "category": "short_5",  
+        "date": "2026-02-27",  
+        "time": "",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "Снять кастрюлю с плиты"  
+        }  
+    ]  
+    }
+
+    Вот моя просьба: напомни через час
+
+    Ответ:
+
+    {  
+    "type": "tasks",  
+    "items": [  
+        {  
+        "category": "short_5",  
+        "date": "2026-02-27",  
+        "time": "",  
+        "remind_date": "2026-02-27",  
+        "remind_time": "23:19",  
+        "task": "Снять кастрюлю с плиты"  
+        }  
+    ]  
+    }
+
+    ---
+
+    ПРИМЕР 5 — изменить текст задачи (с сохранением ссылки)
+    Вход:
+
+    {  
+    "type": "tasks",  
+    "items": [  
+        {  
+        "category": "short_30",  
+        "date": "2026-02-27",  
+        "time": "",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "Посмотреть https://example.com"  
+        }  
+    ]  
+    }
+
+    Вот моя просьба: не посмотреть, а прочитать
+
+    Ответ:
+
+    {  
+    "type": "tasks",  
+    "items": [  
+        {  
+        "category": "short_30",  
+        "date": "2026-02-27",  
+        "time": "",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "Прочитать https://example.com"  
+        }  
+    ]  
+    }
+
+    ---
+
+    ПРИМЕР 6 — ничего не менять
+    Вход:
+
+    {  
+    "type": "tasks",  
+    "items": [  
+        {  
+        "category": "short_30",  
+        "date": "2026-02-27",  
+        "time": "",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "Сходить в магазин"  
+        }  
+    ]  
+    }
+
+    Вот моя просьба: покажи
+
+    Ответ:
+
+    {  
+    "type": "tasks",  
+    "items": [  
+        {  
+        "category": "short_30",  
+        "date": "2026-02-27",  
+        "time": "",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "Сходить в магазин"  
+        }  
+    ]  
+    }
+
+    ---
+
+    ПРИМЕР 7 — изменить количество покупки
+    Вход:
+
+    {  
+    "type": "shopping_list",  
+    "items": [  
+        {  
+        "category": "grocery",  
+        "item": "молоко",  
+        "amount": "",  
+        "unit": ""  
+        }  
+    ]  
+    }
+
+    Вот моя просьба: две упаковки
+
+    Ответ:
+
+    {  
+    "type": "shopping_list",  
+    "items": [  
+        {  
+        "category": "grocery",  
+        "item": "молоко",  
+        "amount": "2.0",  
+        "unit": "шт"  
+        }  
+    ]  
+    }
+
+    ---
+
+    ПРИМЕР 8 — изменить единицы измерения
+    Вход:
+
+    {  
+    "type": "shopping_list",  
+    "items": [  
+        {  
+        "category": "grocery",  
+        "item": "яблоки",  
+        "amount": "",  
+        "unit": ""  
+        }  
+    ]  
+    }
+
+    Вот моя просьба: полкило
+
+    Ответ:
+
+    {  
+    "type": "shopping_list",  
+    "items": [  
+        {  
+        "category": "grocery",  
+        "item": "яблоки",  
+        "amount": "0.5",  
+        "unit": "кг"  
+        }  
+    ]  
+    }
+
+    ---
+
+    ПРИМЕР 9 — изменить название товара
+    Вход:
+
+    {  
+    "type": "shopping_list",  
+    "items": [  
+        {  
+        "category": "pharmacy",  
+        "item": "пластырь",  
+        "amount": "",  
+        "unit": ""  
+        }  
+    ]  
+    }
+
+    Вот моя просьба: не пластырь а бинт
+
+    Ответ:
+
+    {  
+    "type": "shopping_list",  
+    "items": [  
+        {  
+        "category": "pharmacy",  
+        "item": "бинт",  
+        "amount": "",  
+        "unit": ""  
+        }  
+    ]  
+    }
+
+    ---
+
+    ПРИМЕР 10 — разделить покупку
+    Вход:
+
+    {  
+    "type": "shopping_list",  
+    "items": [  
+        {  
+        "category": "other",  
+        "item": "стихи мандельштама и пушкина",  
+        "amount": "",  
+        "unit": ""  
+        }  
+    ]  
+    }
+
+    Вот моя просьба: раздели
+
+    Ответ:
+
+    {  
+    "type": "shopping_list",  
+    "items": [  
+        {  
+        "category": "other",  
+        "item": "стихи мандельштама",  
+        "amount": "",  
+        "unit": ""  
+        },  
+        {  
+        "category": "other",  
+        "item": "стихи пушкина",  
+        "amount": "",  
+        "unit": ""  
+        }  
+    ]  
+    }
+
+    ---
+
+    ПРИМЕР 11 — изменить задачу на покупку
+    Вход:
+
+    {  
+    "type": "tasks",  
+    "items": [  
+        {  
+        "category": "short_30",  
+        "date": "",  
+        "time": "",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "Купить хлеб"  
+        }  
+    ]  
+    }
+
+    Вот моя просьба: это покупка
+
+    Ответ:
+
+    {  
+    "type": "shopping_list",  
+    "items": [  
+        {  
+        "category": "grocery",  
+        "item": "хлеб",  
+        "amount": "",  
+        "unit": ""  
+        }  
+    ]  
+    }
+
+    ---
+
+    ПРИМЕР 12 — изменить покупку на задачу
+    Вход:
+
+    {  
+    "type": "shopping_list",  
+    "items": [  
+        {  
+        "category": "other",  
+        "item": "купить абонемент в спорт зал",  
+        "amount": "",  
+        "unit": ""  
+        }  
+    ]  
+    }
+
+    Вот моя просьба: задача
+
+    Ответ:
+
+    {  
+    "type": "tasks",  
+    "items": [  
+        {  
+        "category": "short_120",  
+        "date": "",  
+        "time": "",  
+        "remind_date": "",  
+        "remind_time": "",  
+        "task": "купить абонемент в спорт зал"  
+        }  
+    ]  
+    }
     --------------------------------------------------
 
     ВАЖНО
