@@ -24,7 +24,7 @@ class TaskLLMResponse(BaseModel):
     )
     @classmethod
     def empty_string_to_none(cls, v):
-        if v == "":
+        if v == "" or v=="None":
             return None
         return v
 
@@ -40,7 +40,7 @@ class ItemLLMResponse(BaseModel):
     )
     @classmethod
     def empty_string_to_none(cls, v):
-        if v=="":
+        if v=="" or v=="None":
             return None
         return v
 

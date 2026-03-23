@@ -8,3 +8,4 @@ ARCHITECTURE_REPORT.md
 __pycache__/
 *.pyc
 .db
+.log

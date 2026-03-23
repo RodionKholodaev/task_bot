@@ -31,7 +31,7 @@ class MessageService:
             
     @staticmethod
     async def make_save_new_entity(s: AsyncSession, result: dict, user_id: int) -> List[Task] | List[ShoppingItem] | None:
-        settings = UserRepository.get_user_settings(s, user_id)
+        settings = await UserRepository.get_user_settings(s, user_id)
         if settings is None:
             raise ValueError("пользователь не найден")
             

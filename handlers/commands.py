@@ -573,8 +573,8 @@ async def process_user_message(message: Message, text:str, s: AsyncSession):
     else: raise ValueError("сообщение из неизвестного источника")
 
 
-    dt_string = Formater.get_user_time(s, user_id)
-    week_info = Formater.get_week_info(s, user_id)
+    dt_string = await Formater.get_user_time(s, user_id)
+    week_info = await Formater.get_week_info(s, user_id)
 
     if not dt_string:
         await message.answer("Часовой пояс не найден, добавьте его в настройках")
