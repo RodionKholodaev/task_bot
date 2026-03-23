@@ -1,17 +1,11 @@
 # ai_client.py
 import json
 import asyncio
-
 from openai import OpenAI
-
 from config import OPENROUTER_API_KEY
 
-
-# загружаем переменные из .env в систему, чтобы потом можно было достать
-
-
-OPENROUTER_API_KEY = OPENROUTER_API_KEY
-
+import logging
+logger = logging.getLogger(__name__)
 
 # Инициализация клиента OpenRouter (OpenAI-совместимый) [web:45][web:49][web:83]
 client = OpenAI(
@@ -58,7 +52,7 @@ async def ask_llm(description: str, system_msg:str) -> dict:
 
     return {"error": error}
 
-async def parse_text(description: str, user_description: str) -> dict: 
+async def parse_text(description: str, user_description: str, extra_info: str) -> dict: 
     print("попал в parse_text")
     system_msg = """
     ROLE
@@ -414,12 +408,14 @@ async def parse_text(description: str, user_description: str) -> dict:
     Только JSON объект.
     """
     user_info=f"Вот описание пользователя, учитывай его при обработке его запроса:\n {user_description}"
-    system_msg = system_msg + user_info
+    user_week = f"\nВот данные о дне и неделе пользователя {extra_info}"
+    system_msg = system_msg + user_info + user_week
+    logger.debug(f"дополнительная информация о пользователе: {user_info + user_week}")
     data = await ask_llm(description, system_msg)
     return data
     
 
-async def edit_entity(description: str, date_and_time: str, user_description: str) -> dict:
+async def edit_entity(description: str, date_and_time: str, user_description: str, extra_info) -> dict:
 
     system_msg = f"""
     ROLE
@@ -655,7 +651,10 @@ async def edit_entity(description: str, date_and_time: str, user_description: st
     Только JSON объект.
     """
     user_info=f"Вот описание пользователя, учитывае его при обработке его запроса:\n {user_description}"
+    user_week = f"\nВот данные о дне и неделе пользователя {extra_info}"
     system_msg = system_msg + user_info
+
+    logger.debug(f"дополнительная информация о пользователе: {user_info + user_week}")
 
     data = await ask_llm(description, system_msg)
     return data

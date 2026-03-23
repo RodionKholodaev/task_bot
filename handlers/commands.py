@@ -503,6 +503,8 @@ async def handle_reply(message: Message, s: AsyncSession):
     dt_string = await Formater.get_user_time(s, user_id)
     week_info = await Formater.get_week_info(s, user_id)
 
+    extra_info = f"Сегодня {dt_string}, Вот информация о днях недели: {week_info}"
+
     if not dt_string:
         await message.answer("Часовой пояс не найден, добавьте его в настройках")
         return
@@ -522,10 +524,10 @@ async def handle_reply(message: Message, s: AsyncSession):
         await message.answer("введите текст для редактирования")
         return
 
-    description = await Formater.make_description(s, id, type, dt_string,request, week_info)
+    description = await Formater.make_description(s, id, type, request)
     if description is None: raise ValueError("почему-то не получилось создать описание")
 
-    result = await AiService.ai_edit(description, dt_string, user_id, s)
+    result = await AiService.ai_edit(description, dt_string, user_id, extra_info, s)
 
 # ------------------------- 
     # удаляем старую сущность (задачи или покупка)
@@ -586,10 +588,12 @@ async def process_user_message(message: Message, text:str, s: AsyncSession):
         await message.answer("Слишком длинный текст")
         return
     
-    promt =f"сегодня {dt_string}, {text}.\n Вот информация о днях недели: {week_info}"
-    logger.debug(f"сообщение в нейросеть от пользователя {promt}")
-    logger.debug(f"передаю в функцию c LLM время и дату: {dt_string}")
-    data_message = await AiService.ai_parse(promt, user_id, s)
+    extra_info = f"Сегодня {dt_string}, Вот информация о днях недели: {week_info}"
+
+    logger.debug(f"сообщение в нейросеть от пользователя {text}")
+    logger.debug(f"дополнительная информация: {extra_info}")
+
+    data_message = await AiService.ai_parse(text, user_id,extra_info, s)
 
     if isinstance(data_message, str):
         await message.answer(f"какая-то ошибка с нейросетью. Текст ошибки {data_message}")

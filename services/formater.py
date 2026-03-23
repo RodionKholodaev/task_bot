@@ -18,7 +18,7 @@ class Formater:
     """
 
     @staticmethod
-    async def make_description(s: AsyncSession, id: int, type: str, dt_string: str, request: str, week_info) -> str | None:
+    async def make_description(s: AsyncSession, id: int, type: str, request: str) -> str | None:
         """
         запрос пользователя для редактирования задачи
         id - id объекта
@@ -28,15 +28,12 @@ class Formater:
         """
 
         if type == "tasks":
-            logger.info("создаю запрос пользователя в LLM для задачи")
-            if week_info is None:
-                week_info = "не получилось сделать описание недели, орентируйся сам"
 
             task = await TaskRepository.get_task_by_id(s, id)
             if not task:
                 return None
             description = f'''
-            Сегодня {dt_string}. Вот моя задача:
+            Вот моя задача:
             {{
             "type": "tasks",
             "items": [
@@ -50,8 +47,6 @@ class Formater:
                 }}
             ]
             }}
-            Вот информация о неделе, чтобы ты не запутался с днями недели:
-            {week_info}
             Вот моя просьба: {request}
             '''
             logger.debug(f"итоговый текст:\n {description}")
@@ -63,7 +58,7 @@ class Formater:
                 return None
             
             description = f'''
-            Сегодня {dt_string}. Вот моя покупка:
+            Вот моя покупка:
             {{
             "type": "shopping_list",
             "items": [
