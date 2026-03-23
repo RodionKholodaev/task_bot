@@ -457,28 +457,36 @@ async def successful_payment(message: Message, s: AsyncSession):
         await message.answer("Приозошла ошибка при обновлении подписки. Пожалуйста напишите в поддержку")
         
 
-# обработка голосового сообщения
 @router.message(F.voice, flags={"long_operation": "check_limits"})
 async def handle_voice_message(message: Message, bot: Bot, s: AsyncSession):
-    # отправляем статус "печать", чтобы пользователь видел активность
-    await message.bot.send_chat_action(chat_id=message.chat.id, action="typing") #type:ignore
+    # сразу уведомляем пользователя
+    status_msg = await message.answer("Сообщение в обработке...")
     
-    # получаем информацию о файле
-    voice = message.voice
-    file_info = await bot.get_file(voice.file_id)#type:ignore
-    
-    # скачиваем файл в объект BytesIO (в оперативную память)
-    file_content = await bot.download_file(file_info.file_path)#type:ignore
-    
-    # отправляем на транскрибацию
-    await message.answer("Сообщение в обработке...")
-    text = await transcribe_voice(file_content.read(), f"{voice.file_unique_id}.ogg")#type:ignore
-    
-    # отвечаем пользователю текстом
-    if text:
-        await process_user_message(message, text, s)
-    else:
-        await message.reply("К сожалению, не удалось преобразовать голос в текст.")
+    # отправляем экшен "запись голоса" или "печать"
+    await bot.send_chat_action(chat_id=message.chat.id, action="upload_document")
+
+    try:
+        voice = message.voice
+        file_info = await bot.get_file(voice.file_id) #type: ignore
+        file_content = await bot.download_file(file_info.file_path) #type: ignore
+        
+        # Читаем данные
+        voice_data = file_content.read() #type: ignore
+        
+        # транскрибация
+        text = await transcribe_voice(voice_data, f"{voice.file_unique_id}.ogg") #type: ignore
+        
+        # удаляем "статус-сообщение" перед финальным ответом
+        await status_msg.delete()
+
+        if text:
+            await process_user_message(message, text, s)
+        else:
+            await message.reply("Не удалось распознать речь.")
+            
+    except Exception as e:
+        await status_msg.edit_text("Произошла ошибка при обработке.")
+        print(f"Error: {e}")
 
 
 
@@ -579,6 +587,7 @@ async def process_user_message(message: Message, text:str, s: AsyncSession):
         return
     
     promt =f"сегодня {dt_string}, {text}.\n Вот информация о днях недели: {week_info}"
+    logger.debug(f"сообщение в нейросеть от пользователя {promt}")
     logger.debug(f"передаю в функцию c LLM время и дату: {dt_string}")
     data_message = await AiService.ai_parse(promt, user_id, s)
 

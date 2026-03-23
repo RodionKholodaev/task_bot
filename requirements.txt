@@ -7,4 +7,3 @@ yookassa
 apscheduler
 aiosqlite
 httpx
-sqlite3
