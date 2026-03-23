@@ -462,9 +462,6 @@ async def handle_voice_message(message: Message, bot: Bot, s: AsyncSession):
     # сразу уведомляем пользователя
     status_msg = await message.answer("Сообщение в обработке...")
     
-    # отправляем экшен "запись голоса" или "печать"
-    await bot.send_chat_action(chat_id=message.chat.id, action="upload_document")
-
     try:
         voice = message.voice
         file_info = await bot.get_file(voice.file_id) #type: ignore
@@ -486,7 +483,7 @@ async def handle_voice_message(message: Message, bot: Bot, s: AsyncSession):
             
     except Exception as e:
         await status_msg.edit_text("Произошла ошибка при обработке.")
-        print(f"Error: {e}")
+        logger.error("ошибка в парсинге гоолоса")
 
 
 
