@@ -151,7 +151,7 @@ class PaymentsRepository:
         result = await s.execute(query)
 
         # Если rowcount == 0, значит юзер не найден или сработал предохранитель (ниже нуля)
-        if result.rowcount == 0:
+        if result.rowcount < 0:
             raise ValueError(
                 "Обновление не выполнено: пользователь не найден или недостаточное значение счетчика"
             )

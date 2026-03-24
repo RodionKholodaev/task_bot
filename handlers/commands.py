@@ -251,7 +251,7 @@ async def self_description(message: Message, state: FSMContext, s: AsyncSession)
     else:
         raise ValueError("не найден пользователь")
     
-    description = UserRepository.get_description(s, user_id)
+    description = await UserRepository.get_description(s, user_id)
 
     if description:
         await message.answer(

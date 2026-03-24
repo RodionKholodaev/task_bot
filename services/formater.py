@@ -221,7 +221,7 @@ class Formater:
             f"📦 **Что:** {item.item}\n"
             f"🔢 **Кол-во:** {quantity_text}\n"
             f"📁 **Категория:** {cat_display}\n"
-            f"✅ **Статус:** {'Куплено' if item.is_bought is not None else 'В списке'}\n\n"
+            f"✅ **Статус:** {'Куплено' if item.is_bought else 'В списке'}\n\n"
             f"🆔 ID товара: {item.id}"
         )
         
