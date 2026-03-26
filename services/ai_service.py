@@ -1,4 +1,4 @@
-from ai.ai_client import parse_text, edit_entity
+from ai.ai_client import parse_text, edit_entity, correct_text
 from db.user_repository import UserRepository
 class AiService:
     @staticmethod
@@ -15,5 +15,9 @@ class AiService:
         if user_description is None: user_description = "описания пользователя нет"
         return await edit_entity(description, date_and_time, user_description, extra_info)
         
+    @staticmethod
+    async def correct_text(text: str):
+        ans = await correct_text(text)
+        return ans
 
 

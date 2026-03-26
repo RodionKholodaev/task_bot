@@ -1311,5 +1311,5 @@ async def correct_text(text: str) -> str:
     }
     """
     text_dict = await ask_llm(text, system_msg)
-    ans = text.get("text", text)
+    ans = text_dict.get("text", text)
     return ans

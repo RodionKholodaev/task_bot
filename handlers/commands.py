@@ -477,7 +477,10 @@ async def handle_voice_message(message: Message, bot: Bot, s: AsyncSession):
         await status_msg.delete()
 
         if text:
-            await process_user_message(message, text, s)
+            # logger.debug(f"message before ai correction: {text}")
+            # corrected_text = await AiService.correct_text(text)
+            # logger.debug(f"message after ai correction: {corrected_text}")
+            await process_user_message(message, text, s) # убрал пока коррекцию. Плохо работает
         else:
             await message.reply("Не удалось распознать речь.")
             
@@ -633,6 +636,7 @@ async def process_user_message(message: Message, text:str, s: AsyncSession):
 @router.message(flags={"long_operation": "check_limits"})
 async def new_task(message: Message, s: AsyncSession):
     """Обработчик добавления новой задачи"""
+    text = message.text if message.text else "без текста"
     logger.debug(f"поступило сообщение {message.text}")
 
     if message.text is None:
