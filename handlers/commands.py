@@ -4,6 +4,7 @@ from aiogram import Router, F, Bot
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 
+
 from keyboards import (
     new_main_keyboard,
     profile_keyboard, 
@@ -28,7 +29,7 @@ from services.voice_service import transcribe_voice
 
 from db.user_repository import UserRepository
 from db.payments_repository import PaymentsRepository
-from db.statistics import Statistics
+from db.statistic_repository import StatisticRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import SubscriptionTypes
@@ -312,80 +313,52 @@ async def save_description(message: Message, state: FSMContext, s: AsyncSession)
 
     await state.clear()
 
-
-
+# не проверял код!
 @router.message(F.text == "📊 Статистика")
-async def statistic(message: Message):
-    if message.from_user is None:
-        return # Просто выходим, а не raise, чтобы бот не падал в логах
-    
-    user_id = message.from_user.id
-    
-    # --- ПОЛУЧЕНИЕ СЕССИИ ---
-    # ЗАМЕНИ ЭТОТ БЛОК НА ТВОЙ СПОСОБ ПОЛУЧЕНИЯ AsyncSession
-    # Например, если сессия передается через middleware в state или context
-    # async with get_db_session() as session: 
-    #    ... код ниже ...
-    
-    # Для примера предполагаем, что session уже есть или получаем так:
-    # session: AsyncSession = await db_manager.get_session() 
-    # В реальном проекте лучше использовать dependency injection или middleware
-    
-    try:
-        # Временная заглушка для сессии, удали и используй свою
-        from db.database import get_session # Пример импорта твоей фабрики сессий
-        async with get_session() as session:
-            
-            # 1. Собираем все данные параллельно или последовательно
-            productivity = await Statistics.get_productivity_score(session, user_id)
-            logger.debug(f"получил productivity: {productivity}")
-            top_categories = await Statistics.get_top_task_categories(session, user_id)
-            logger.debug(f"получил top_categories: {top_categories}")
-            shopping = await Statistics.get_shopping_habits(session, user_id)
-            logger.debug(f"получил shopping: {shopping}")
-            overdue = await Statistics.get_deadline_pressure(session, user_id)
-            logger.debug(f"получил overdue: {overdue}")
-            account = await Statistics.get_account_info(session, user_id)
-            logger.debug(f"получил account: {account}")
+async def show_statistics(message: Message, s: AsyncSession):
+    if message.from_user is None: 
+        await message.answer("У сообщения нет пользователя")
+        return
 
-            # 2. Формируем текст сообщения
-            text = f"📊 <b>Ваша личная статистика</b>\n\n"
-            
-            # Продуктивность
-            color = "🟢" if productivity > 70 else "🟡" if productivity > 40 else "🔴"
-            text += f"{color} <b>Эффективность:</b> {productivity}% выполненных задач\n"
-            text += f"   <i>(Закрыто дел от общего количества)</i>\n\n"
-            
-            # Задачи
-            text += f"📌 <b>Активность в задачах:</b>\n"
-            if top_categories:
-                cats_text = ", ".join([f"{cat} ({cnt})" for cat, cnt in top_categories])
-                text += f"   Топ категории: {cats_text}\n"
-            else:
-                text += f"   Пока нет задач\n"
-            
-            if overdue > 0:
-                text += f"   ⚠️ <b>Просрочено:</b> {overdue} задач(и) требуют внимания!\n"
-            else:
-                text += f"   ✅ Просроченных задач нет\n"
-            text += "\n"
-            
-            # Покупки
-            text += f"🛒 <b>Покупки:</b>\n"
-            text += f"   Чаще всего покупаете: <b>{shopping['top_category']}</b>\n"
-            text += f"   Всего куплено позиций: {shopping['total_bought']}\n\n"
-            
-            # Аккаунт
-            text += f"💎 <b>Статус аккаунта:</b> {account['sub']}\n"
-            text += f"   Задач создано: {account['tasks_count']} | Покупок: {account['items_count']}"
-            
-            # 3. Отправляем сообщение
-            await message.answer(text, parse_mode="HTML")
-            
-    except Exception as e:
-        # Логирование ошибки
-        print(f"Error in statistic handler: {e}")
-        await message.answer("😕 К сожалению, сейчас не удалось загрузить статистику. Попробуйте позже.")
+    stats = await StatisticRepository.get_user_stats(s, message.from_user.id)
+    
+    # Маппинг категорий сложности
+    complexity_map = {
+        "short_5": "< 5 мин",
+        "short_30": "< 30 мин",
+        "short_120": "< 2 часов",
+        "long": "> 2 часов"
+    }
+
+    # Формируем блок сложности
+    complexity_lines = []
+    for key, label in complexity_map.items():
+        count = stats['complexity'].get(key, 0)
+        if count > 0:
+            complexity_lines.append(f"  ▫️ {label}: <b>{count}</b>")
+    complexity_str = "\n".join(complexity_lines) if complexity_lines else "  ▫️ Все задачи выполнены!"
+
+    # Формируем график на неделю
+    weekly_str = " | ".join([f"{d['day_name']}: {d['count']}" for d in stats['weekly']])
+
+    # Формируем покупки
+    shopping_lines = [f"  🛒 {cat if cat else 'Разное'}: <b>{cnt}</b>" for cat, cnt in stats['shopping']]
+    shopping_str = "\n".join(shopping_lines) if shopping_lines else "  🛒 Список пуст"
+
+    text = (
+        f"<b>📊 ВАША СТАТИСТИКА</b>\n\n"
+        f"<b>✅ Задачи:</b>\n"
+        f"  Выполнено: <b>{stats['completed']}</b>\n"
+        f"  В процессе: <b>{stats['uncompleted']}</b>\n\n"
+        f"<b>⏳ Сложность активных задач:</b>\n"
+        f"{complexity_str}\n\n"
+        f"<b>📅 План до конца недели:</b>\n"
+        f"<code>{weekly_str}</code>\n\n"
+        f"<b>🛍 Список покупок:</b>\n"
+        f"{shopping_str}"
+    )
+
+    await message.answer(text, parse_mode="HTML")
 
 @router.message(F.text == "💎 Подписка")
 async def subscription(message: Message, s: AsyncSession):
@@ -588,12 +561,14 @@ async def process_user_message(message: Message, text:str, s: AsyncSession):
         await message.answer("Слишком длинный текст")
         return
     
-    extra_info = f"Сегодня {dt_string}, Вот информация о днях недели: {week_info}"
+    extra_info = f"{today} вот информация о днях недели: {week_info}\n"
 
     logger.debug(f"сообщение в нейросеть от пользователя {text}")
     logger.debug(f"дополнительная информация: {extra_info}")
 
-    data_message = await AiService.ai_parse(text, user_id,extra_info, s)
+    promt = extra_info + text
+
+    data_message = await AiService.ai_parse(promt, user_id,extra_info, s)
 
     if isinstance(data_message, str):
         await message.answer(f"какая-то ошибка с нейросетью. Текст ошибки {data_message}")

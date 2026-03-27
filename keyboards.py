@@ -9,7 +9,7 @@ def new_main_keyboard() -> ReplyKeyboardMarkup:
             [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="🌅 Завтра")],
             [ KeyboardButton(text="📆 Неделя"), KeyboardButton(text="📋 Все задачи")],
             [KeyboardButton(text="⏱ По длительности"), KeyboardButton(text="🛒 Покупки")],
-            [KeyboardButton(text="🧑 Профиль")] #, KeyboardButton(text="💎 Подписка") - пока не нужно
+            [KeyboardButton(text="🧑 Профиль"), KeyboardButton(text="💎 Подписка")] 
         ],
         resize_keyboard=True,
     )
@@ -19,7 +19,7 @@ def profile_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📝 О себе"), KeyboardButton(text="⏰ Настройка уведомлений")],
-            [KeyboardButton(text="⬅️ Назад")] # KeyboardButton(text="📊 Статистика"),  - пока не нужно
+            [KeyboardButton(text="⬅️ Назад"), KeyboardButton(text="📊 Статистика")] 
         ],
         resize_keyboard=True,
     )
