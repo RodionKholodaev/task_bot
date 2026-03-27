@@ -3,7 +3,7 @@ import logging
 from config import WHISPER_API_URL
 
 
-async def transcribe_voice(file_content: bytes, filename: str) -> str:
+async def transcribe_voice(file_content: bytes, filename: str) -> str| None:
     """
     Отправляет байты аудиофайла на Whisper API и возвращает текст.
     """
@@ -16,4 +16,4 @@ async def transcribe_voice(file_content: bytes, filename: str) -> str:
             return data.get("text", "Не удалось распознать текст.")
         except Exception as e:
             logging.error(f"Error calling Whisper API: {e}")
-            return "Ошибка при обработке аудио."
+            return None
