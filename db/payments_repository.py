@@ -11,7 +11,7 @@ NOTIFY_TIME = datetime.strptime("08:00", "%H:%M").time()
 class PaymentsRepository:
 
     @staticmethod
-    async def get_started(s: AsyncSession, user_id: int, referrer_id: int | None = None): # Добавили аргумент
+    async def get_started(s: AsyncSession, user_id: int, referrer_id: int | None = None, bot = None): # Добавили аргумент
         # Проверяем аккаунт
         result = await s.execute(select(UserAccount).where(UserAccount.user_id == user_id))
         user_account = result.scalar_one_or_none()
@@ -25,10 +25,14 @@ class PaymentsRepository:
                 user_id=user_id,
                 task_count=0,
                 item_count=0,
-                subscription=SubscriptionTypes.FREE, # Убираем .name, так как в модели Enum
-                referrer_id=referrer_id              # Сохраняем пригласителя
+                subscription=SubscriptionTypes.FREE,
+                referrer_id=referrer_id
             )
             s.add(user_account)
+            
+            # НОВЫЙ БЛОК: Если есть пригласитель, начисляем ему бонус
+            if referrer_id and bot:
+                await PaymentsRepository.add_referral_bonus(s, referrer_id, bot)
 
         if user_settings is None:
             user_settings = UserSettings(
@@ -39,6 +43,36 @@ class PaymentsRepository:
             s.add(user_settings)
 
         await s.commit() # Один коммит на всё
+
+
+    @staticmethod
+    async def add_referral_bonus(s: AsyncSession, referrer_id: int, bot):
+        """Начисляет 7 дней Premium пригласившему"""
+        result = await s.execute(
+            select(UserAccount).where(UserAccount.user_id == referrer_id)
+        )
+        referrer_account = result.scalar_one_or_none()
+
+        if referrer_account:
+            # Если подписки нет или она просрочена, начинаем от "сейчас"
+            # Если активна — прибавляем к дате окончания
+            start_date = (
+                referrer_account.subscription_until 
+                if (referrer_account.subscription_until and referrer_account.subscription_until > datetime.utcnow()) 
+                else datetime.utcnow()
+            )
+            
+            referrer_account.subscription = SubscriptionTypes.PREMIUM
+            referrer_account.subscription_until = start_date + timedelta(days=7)
+            
+            # Уведомляем счастливчика
+            try:
+                await bot.send_message(
+                    referrer_id, 
+                    "🎉 По вашей ссылке присоединился новый пользователь! Вам начислено 7 дней Premium-подписки."
+                )
+            except Exception:
+                pass # Если заблокировал бота
 
 
     @staticmethod

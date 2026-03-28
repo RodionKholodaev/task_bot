@@ -67,7 +67,7 @@ async def start(message: Message, s: AsyncSession, command: CommandObject, bot: 
             referrer_id = potential_ref
 
     # Передаем referrer_id в ваш репозиторий
-    await PaymentsRepository.get_started(s, user_id, referrer_id=referrer_id)
+    await PaymentsRepository.get_started(s, user_id, referrer_id=referrer_id, bot=bot)
   
         
     await message.answer(
@@ -105,7 +105,8 @@ async def start(message: Message, s: AsyncSession, command: CommandObject, bot: 
     
     # В сообщение с инструкцией или в отдельное сообщение добавим нашу кнопку
     await message.answer(
-        "💎 Поддержите проект или пригласите друзей, чтобы получить бонусы!",
+        "💎 **Акция: Пригласи друга — получи 7 дней Premium!**\n\n"
+        "За каждого приглашенного пользователя вы получаете неделю полного доступа бесплатно.",
         reply_markup=buy_inline(user_id, bot_info.username)
     )
 
@@ -348,10 +349,10 @@ async def show_statistics(message: Message, s: AsyncSession):
     
     # Маппинг категорий сложности
     complexity_map = {
-        "short_5": "< 5 мин",
-        "short_30": "< 30 мин",
-        "short_120": "< 2 часов",
-        "long": "> 2 часов"
+        "short_5": "&lt; 5 мин",
+        "short_30": "&lt; 30 мин",
+        "short_120": "&lt; 2 часов",
+        "long": "&gt; 2 часов"
     }
 
     # Формируем блок сложности
@@ -404,7 +405,8 @@ async def subscription(message: Message, s: AsyncSession, bot:Bot):
             return
         else:
             bot_info = await bot.get_me()
-            if bot_info is None: raise ValueError("не получилось получить имя бота!")
+            if bot_info is None or bot_info.username is None: 
+                raise ValueError("не получилось получить имя бота!")
             await message.answer(ans, reply_markup=buy_inline(user_id, bot_info.username))
 
 
@@ -519,6 +521,7 @@ async def handle_reply(message: Message, s: AsyncSession):
     type = id_type["type"]
     id = id_type["id"]
     request = message.text
+    request = f"{week_info}, {request}"
 
     if request is None:
         await message.answer("введите текст для редактирования")

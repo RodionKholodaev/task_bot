@@ -64,7 +64,7 @@ def buy_inline(user_id: int, bot_username: str) -> InlineKeyboardMarkup:
     share_url = f"https://t.me/share/url?url={link}&text={text}"
     
     kb.button(text="Оформить Pro", callback_data="buy_pro_subscription")
-    kb.button(text="📢 Пригласить друга", url=share_url) # Кнопка для шаринга
+    kb.button(text="🎁 Позвать друга (+7 дней Premium)", url=share_url) # Кнопка для шаринга
     
     kb.adjust(1)
     return kb.as_markup()
