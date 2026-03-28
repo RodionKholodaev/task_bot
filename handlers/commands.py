@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from aiogram import Router, F, Bot
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, CommandObject
 from aiogram.types import Message
 
 
@@ -51,13 +51,24 @@ class ProfileState(StatesGroup):
     waiting_for_description = State()
 
 @router.message(CommandStart())
-async def start(message: Message, s: AsyncSession):
+async def start(message: Message, s: AsyncSession, command: CommandObject, bot: Bot):
     """Обработчик команды /start"""
     if message.from_user is None:
         raise ValueError("У сообщения нет пользователя")
+    
     user_id = message.from_user.id
+    args = command.args  # Это и есть наш referrer_id
+    
+    # Проверяем, пришел ли пользователь по ссылке
+    referrer_id = None
+    if args and args.isdigit():
+        potential_ref = int(args)
+        if potential_ref != user_id: # Нельзя пригласить самого себя
+            referrer_id = potential_ref
+
+    # Передаем referrer_id в ваш репозиторий
+    await PaymentsRepository.get_started(s, user_id, referrer_id=referrer_id)
   
-    await PaymentsRepository.get_started(s, user_id)
         
     await message.answer(
         "Привет! 👋 Я твой умный личный менеджер.\n\n"
@@ -85,6 +96,19 @@ async def start(message: Message, s: AsyncSession):
     )
 
     await msg.pin()
+
+    # Получаем юзернейм бота для генерации ссылки в кнопке
+    bot_info = await bot.get_me()
+
+    if bot_info is None or bot_info.username is None: 
+        raise ValueError("не получилось получить имя бота!")
+    
+    # В сообщение с инструкцией или в отдельное сообщение добавим нашу кнопку
+    await message.answer(
+        "💎 Поддержите проект или пригласите друзей, чтобы получить бонусы!",
+        reply_markup=buy_inline(user_id, bot_info.username)
+    )
+
 
 
 @router.message(F.text == "⏱ По длительности")
@@ -361,7 +385,7 @@ async def show_statistics(message: Message, s: AsyncSession):
     await message.answer(text, parse_mode="HTML")
 
 @router.message(F.text == "💎 Подписка")
-async def subscription(message: Message, s: AsyncSession):
+async def subscription(message: Message, s: AsyncSession, bot:Bot):
     if message.from_user is None:
         raise ValueError("Сообщение не от пользователя")
     else:
@@ -379,7 +403,9 @@ async def subscription(message: Message, s: AsyncSession):
             await message.answer(ans)
             return
         else:
-            await message.answer(ans, reply_markup=buy_inline())
+            bot_info = await bot.get_me()
+            if bot_info is None: raise ValueError("не получилось получить имя бота!")
+            await message.answer(ans, reply_markup=buy_inline(user_id, bot_info.username))
 
 
 @router.message(F.text.regexp(r"^[+-]?\d+\s\d{2}:\d{2}$"))
@@ -427,7 +453,8 @@ async def successful_payment(message: Message, s: AsyncSession):
         # выдать подписку
         await message.answer("Оплата прошла успешно!")
     except:
-        await message.answer("Приозошла ошибка при обновлении подписки. Пожалуйста напишите в поддержку")
+        logger.error("Ошибка при обновлении подписки")
+        await message.answer("Произошла ошибка при обновлении подписки. Пожалуйста напишите в поддержку: @Rodion137")
         
 
 @router.message(F.voice, flags={"long_operation": "check_limits"})

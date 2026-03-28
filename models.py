@@ -66,8 +66,8 @@ class UserAccount(Base):
     __tablename__ = "user_account"
 
     user_id: Mapped[int] = mapped_column(primary_key=True)
-    task_count: Mapped[int] = mapped_column(default=50)
-    item_count: Mapped[int] = mapped_column(default=50)
+    task_count: Mapped[int] = mapped_column(default=0)
+    item_count: Mapped[int] = mapped_column(default=0)
 
     
     subscription: Mapped[SubscriptionTypes] = mapped_column(
@@ -76,6 +76,8 @@ class UserAccount(Base):
     )
     
     subscription_until: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+    referrer_id: Mapped[Optional[int]] = mapped_column(index=True, nullable=True)
 
     last_seen: Mapped[date] = mapped_column(
             Date, 

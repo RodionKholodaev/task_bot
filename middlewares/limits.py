@@ -4,6 +4,7 @@ from aiogram.types import Message
 from models import SubscriptionTypes
 from aiogram.dispatcher.flags import get_flag
 from db.database import get_session
+from db.payments_repository import PaymentsRepository
 
 # Импортируйте ваши сессии БД и модели
 from db.payments_repository import PaymentsRepository
@@ -31,12 +32,13 @@ class TaskLimitMiddleware(BaseMiddleware):
         # достаем данные аккаунта (метод в репозитории)
         async with get_session() as s:
             account = await PaymentsRepository.get_user_account(s, user_id)
+            subscription = await PaymentsRepository.get_user_sub(s, user_id)
         
         if not account: # пускай хендлер сам разбирается
             return await handler(event, data)
-        
+    
         # для PREMIUM пользователя нет ограничений
-        if account.subscription == SubscriptionTypes.PREMIUM: 
+        if subscription == SubscriptionTypes.PREMIUM: 
             return await handler(event, data)
 
         if account.task_count + account.item_count >= MAX_COUNT: 

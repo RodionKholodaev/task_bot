@@ -11,38 +11,34 @@ NOTIFY_TIME = datetime.strptime("08:00", "%H:%M").time()
 class PaymentsRepository:
 
     @staticmethod
-    async def get_started(s: AsyncSession, user_id: int):
-
-        result = await s.execute(
-            select(UserAccount).where(UserAccount.user_id == user_id)
-        )
+    async def get_started(s: AsyncSession, user_id: int, referrer_id: int | None = None): # Добавили аргумент
+        # Проверяем аккаунт
+        result = await s.execute(select(UserAccount).where(UserAccount.user_id == user_id))
         user_account = result.scalar_one_or_none()
 
-        result = await s.execute(
-            select(UserSettings).where(UserSettings.user_id == user_id)
-        )
+        # Проверяем настройки
+        result = await s.execute(select(UserSettings).where(UserSettings.user_id == user_id))
         user_settings = result.scalar_one_or_none()
 
         if user_account is None:
-            user_acc = UserAccount(
+            user_account = UserAccount(
                 user_id=user_id,
                 task_count=0,
                 item_count=0,
-                subscription=SubscriptionTypes.FREE.name
+                subscription=SubscriptionTypes.FREE, # Убираем .name, так как в модели Enum
+                referrer_id=referrer_id              # Сохраняем пригласителя
             )
-            s.add(user_acc)
-            await s.commit()
-            await s.refresh(user_acc)
+            s.add(user_account)
 
         if user_settings is None:
-            user_set = UserSettings(
+            user_settings = UserSettings(
                 user_id=user_id,
                 notify_time=NOTIFY_TIME,
                 utc_offset=UTC_OFFSET
             )
-            s.add(user_set)
-            await s.commit()
-            await s.refresh(user_set)
+            s.add(user_settings)
+
+        await s.commit() # Один коммит на всё
 
 
     @staticmethod
@@ -54,8 +50,8 @@ class PaymentsRepository:
             status="succeeded",
             tg_payment_id=tg_payment_id,
             provider_payment_id=provider_payment_id,
-            created_at=datetime.now(),
-            expires_at=datetime.now() + timedelta(days=30)
+            created_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(days=30)
         )
 
         s.add(payment)
@@ -80,7 +76,8 @@ class PaymentsRepository:
             account.subscription = new_sub
 
             if new_sub == SubscriptionTypes.PREMIUM:
-                account.subscription_until = datetime.utcnow() + timedelta(days=30)
+                start_date = account.subscription_until if (account.subscription_until and account.subscription_until > datetime.utcnow()) else datetime.utcnow()
+                account.subscription_until = start_date + timedelta(days=30)
             else:
                 account.subscription_until = None
 
@@ -94,19 +91,24 @@ class PaymentsRepository:
 
 
     @staticmethod
-    async def get_user_sub(s: AsyncSession, user_id: int) -> SubscriptionTypes | None:
-
+    async def get_user_sub(s: AsyncSession, user_id: int) -> SubscriptionTypes:
         result = await s.execute(
             select(UserAccount).where(UserAccount.user_id == user_id)
         )
-
         account = result.scalar_one_or_none()
 
-        if account:
-            return account.subscription
+        if not account:
+            return SubscriptionTypes.FREE
 
-        return None
+        # Если подписка PREMIUM, но время вышло — сбрасываем в FREE
+        if account.subscription == SubscriptionTypes.PREMIUM:
+            if account.subscription_until and account.subscription_until < datetime.utcnow():
+                account.subscription = SubscriptionTypes.FREE
+                account.subscription_until = None
+                await s.commit()
+                return SubscriptionTypes.FREE
 
+        return account.subscription
 
     @staticmethod
     async def get_user_account(s: AsyncSession, user_id: int) -> UserAccount | None:

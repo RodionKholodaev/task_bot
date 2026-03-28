@@ -55,11 +55,19 @@ def purchase_category_keyboard() -> ReplyKeyboardMarkup:
         resize_keyboard=True,
     )
 
-def buy_inline() -> InlineKeyboardMarkup:
+def buy_inline(user_id: int, bot_username: str) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text="Оформить Pro", callback_data="buy_pro_subscription")
-    return kb.as_markup()
     
+    # Реферальная ссылка
+    link = f"https://t.me/{bot_username}?start={user_id}"
+    text = "Организуй свои дела вместе со мной! 🚀"
+    share_url = f"https://t.me/share/url?url={link}&text={text}"
+    
+    kb.button(text="Оформить Pro", callback_data="buy_pro_subscription")
+    kb.button(text="📢 Пригласить друга", url=share_url) # Кнопка для шаринга
+    
+    kb.adjust(1)
+    return kb.as_markup()
 
 def task_inline(task_id: int) -> InlineKeyboardMarkup:
     """Встроенные кнопки для задачи (выполнено/удалить)"""
