@@ -144,14 +144,6 @@ class PaymentsRepository:
 
         return account.subscription
 
-    @staticmethod
-    async def get_user_account(s: AsyncSession, user_id: int) -> UserAccount | None:
-
-        result = await s.execute(
-            select(UserAccount).where(UserAccount.user_id == user_id)
-        )
-
-        return result.scalar_one_or_none()
 
 
     @staticmethod
@@ -193,3 +185,14 @@ class PaymentsRepository:
             )
 
         await s.commit()
+
+    @staticmethod
+    async def get_user_account(s: AsyncSession, user_id: int) -> UserAccount | None:
+        """
+        Получает полную модель аккаунта пользователя.
+        Позволяет обращаться к полям: .subscription, .subscription_until, .referrer_id и т.д.
+        """
+        result = await s.execute(
+            select(UserAccount).where(UserAccount.user_id == user_id)
+        )
+        return result.scalar_one_or_none()

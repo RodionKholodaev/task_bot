@@ -4,7 +4,7 @@ from db.user_repository import UserRepository
 from db.task_repository import TaskRepository
 from db.shopping_repository import ShoppingRepository
 from datetime import datetime, timedelta, timezone
-from models import SubscriptionTypes
+from models import SubscriptionTypes, UserAccount
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging 
 logger = logging.getLogger(__name__)
@@ -263,20 +263,28 @@ class Formater:
         return answer
     
     @staticmethod
-    def format_sub_info(sub: str) -> tuple[str, bool]:
-        if sub == SubscriptionTypes.FREE:
+    def format_sub_info(account: UserAccount) -> tuple[str, bool]:
+        if account.subscription == SubscriptionTypes.FREE:
             ans = (
-                "У вас подписка free\n"
+                "У вас подписка **Free**\n"
                 "Вы можете хранить максимум 50 покупок и 50 задач\n"
                 "Оформите Pro, чтобы не иметь ограничений в использовании сервиса"
             )
             return (ans, False)
-        elif sub == SubscriptionTypes.PREMIUM:
+            
+        elif account.subscription == SubscriptionTypes.PREMIUM:
+            # Форматируем дату, если она есть
+            date_str = ""
+            if account.subscription_until:
+                # Выведет в формате: 28.03.2026
+                date_str = f"\nДействительна до: **{account.subscription_until.strftime('%d.%m.%Y')}**"
+            
             ans = (
-                "У вас подписка Pro\n"
+                "У вас подписка **Pro** 💎\n"
                 "Вы можете пользоваться сервисом без ограничений"
+                f"{date_str}"
             )
             return (ans, True)
+            
         else:
             raise ValueError("Неизвестный тип подписки")
-

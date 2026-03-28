@@ -386,28 +386,31 @@ async def show_statistics(message: Message, s: AsyncSession):
     await message.answer(text, parse_mode="HTML")
 
 @router.message(F.text == "💎 Подписка")
-async def subscription(message: Message, s: AsyncSession, bot:Bot):
-    if message.from_user is None:
-        raise ValueError("Сообщение не от пользователя")
+async def subscription(message: Message, s: AsyncSession, bot: Bot):
+    user_id = message.from_user.id #type: ignore
+
+    # 1. Получаем объект аккаунта целиком
+    user_account = await PaymentsRepository.get_user_account(s, user_id)
+
+    # 2. Если пользователя нет (технически), создаем его
+    if user_account is None:
+        await PaymentsRepository.get_started(s, user_id)
+        user_account = await PaymentsRepository.get_user_account(s, user_id)
+
+    # 3. Передаем объект в форматер (который мы обновили ранее)
+    ans, is_pro = Formater.format_sub_info(user_account) # type: ignore
+    
+    if is_pro:
+        # Для Pro просто выводим инфо с датой
+        await message.answer(ans, parse_mode="Markdown")
     else:
-        user_id = message.from_user.id
-
-        user_sub = await PaymentsRepository.get_user_sub(s, user_id)
-
-        if user_sub is None:
-            await message.answer("Вас пока нет в нашей базе данных\n Создайте задачу")
-            return
-
-        ans, is_pro = Formater.format_sub_info(user_sub) #type: ignore
-        
-        if is_pro:
-            await message.answer(ans)
-            return
-        else:
-            bot_info = await bot.get_me()
-            if bot_info is None or bot_info.username is None: 
-                raise ValueError("не получилось получить имя бота!")
-            await message.answer(ans, reply_markup=buy_inline(user_id, bot_info.username))
+        # Для Free добавляем кнопки покупки и приглашения
+        bot_info = await bot.get_me()
+        await message.answer(
+            ans, 
+            reply_markup=buy_inline(user_id, bot_info.username),#type: ignore
+            parse_mode="Markdown"
+        )
 
 
 @router.message(F.text.regexp(r"^[+-]?\d+\s\d{2}:\d{2}$"))
