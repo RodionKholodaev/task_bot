@@ -6,12 +6,30 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 
 from .scheduler_config import scheduler
-from .jobs import send_daily_notification, send_task_reminder
+from .jobs import send_daily_notification, send_task_reminder, make_db_backup
 from db.user_repository import UserRepository
 from db.task_repository import TaskRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
+
+
+def create_backup_job():
+    """Создает ежедневную задачу на бэкап БД"""
+    job_id = "db_backup_daily"
+    
+    # Запуск каждый день в 03:00 UTC
+    trigger = CronTrigger(hour=3, minute=0, second=0, timezone='UTC')
+    
+    scheduler.add_job(
+        func=make_db_backup,
+        trigger=trigger,
+        id=job_id,
+        name="Daily database backup",
+        replace_existing=True,
+        jobstore='default'
+    )
+    logger.info(f"Создана джоба для бэкапа БД: {job_id}")
 
 
 async def _get_user_notify_time(s: AsyncSession, user_id: int) -> Optional[dict]:
@@ -132,6 +150,8 @@ async def load_all_jobs_from_db(s: AsyncSession):
     """
     logger.info("Загрузка джобов из БД...")
     
+    create_backup_job()
+
     users = await UserRepository.get_all_users(s)
     if not users:
         logger.info("Нет пользователей для загрузки джобов")

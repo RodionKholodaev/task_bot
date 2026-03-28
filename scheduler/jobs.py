@@ -1,16 +1,47 @@
 from datetime import datetime, timedelta
 from typing import Optional
 import logging
-
+import os
 from aiogram import Bot
 from config import BOT_TOKEN
 from db.task_repository import TaskRepository
 from db.database import get_session
+import shutil
 
 logger = logging.getLogger(__name__)
 
 bot = Bot(token=BOT_TOKEN) #type: ignore
 
+# бекапы бд
+def make_db_backup():
+    """
+    Создает бэкап tasks.db и хранит 2 копии
+    """
+    today = datetime.now()
+    # Вчера и позавчера
+    yesterday = (today - timedelta(days=1)).strftime('%d-%m-%Y')
+    day_before = (today - timedelta(days=2)).strftime('%d-%m-%Y')
+
+    db_path = 'tasks.db'
+    backup_yesterday = f"tasks_{yesterday}.db"
+    backup_before_yesterday = f"tasks_{day_before}.db"
+
+    try:
+        if not os.path.exists(db_path):
+            logger.error(f"Файл БД {db_path} не найден для бэкапа")
+            return
+
+        # Ротация: вчерашний становится позавчерашним
+        if os.path.exists(backup_yesterday):
+            shutil.copy2(backup_yesterday, backup_before_yesterday)
+            logger.info("Старый бэкап перемещен в 'day_before_yesterday'")
+
+        # Создаем новый вчерашний бэкап из текущей БД
+        shutil.copy2(db_path, backup_yesterday)
+        logger.info(f"Создан свежий бэкап БД в {backup_yesterday}")
+
+    except Exception as e:
+        logger.error(f"Ошибка при создании бэкапа: {e}")
 
 async def send_daily_notification(user_id: int, utc_offset: int):
     """
