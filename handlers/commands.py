@@ -595,8 +595,18 @@ async def process_user_message(message: Message, text:str, s: AsyncSession):
     week_info = await Formater.get_week_info(s, user_id)
 
     if not dt_string:
-        await message.answer("Часовой пояс не найден, добавьте его в настройках")
-        return
+        await message.answer("Часовой пояс не найден, добавьте его в настройках уведомлений в профиле")
+        await UserRepository.upsert_user_settings(
+            s,
+            user_id,
+            int(3),
+            datetime.strptime("09:00", "%H:%M").time()
+        )
+
+        await message.answer("Пока будем считать что ваш часовой пояс UTC+3, и о ежедневных задачах вам нужно напоминать в 9:00", reply_markup=new_main_keyboard())
+        
+        dt_string = await Formater.get_user_time(s, user_id)
+        week_info = await Formater.get_week_info(s, user_id)
 
     # проверка на длину (500 слов)
     MAX_TEXT_LENGTH = 6*500
