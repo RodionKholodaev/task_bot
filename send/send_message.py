@@ -11,15 +11,14 @@ from keyboards import new_main_keyboard
 TOKEN = "8323121260:AAFTnun59sHfaawIw_LGhymLnVsoO_EfV9I"
 DB_URL = "sqlite+aiosqlite:///tasks.db"
 
-MESSAGE_TEXT = "Прошу прощения, бот был временно недоступен из-за блокировок"
 
 NEW_VERSION_TEXT = (
-    "**Обновление!**\n\n"
-    "Появился профиль пользователя \"🧑 Профиль\"\n\n"
-    "В нем в разделе \"⏰ Настройка уведомлений\" можно указать время ежедневных напоминаний и часовой пояс.\n\n"
-    "В разделе \"📝 О себе\" вы можете указать информацию, которую нужно учитывать боту при записи ваших задач и покупок "
-    "(например, можно указать сколько времени у вас уходит на разные классы задач для более точной классификации, "
-    "или попросить всегда делать описание задачи в четком формате)."
+    "*Обновление!*\n\n"
+    "Что нового?\n\n"
+    "\"📊 Статистика\" в профиле\n"
+    "Нажмите на кнопку, чтобы увидеть краткую информацию по вашим задачам и покупкам\n\n"
+    "Ввод голосом\n"
+    "Теперь вы можете создавать задачи/покупки просто записав голосовое"
 )
 
 async def get_user_ids(session_pool):
@@ -43,9 +42,6 @@ async def main():
         count = 0
         for user_id in user_ids:
             try:
-                # Отправляем первое сообщение
-                await bot.send_message(chat_id=user_id, text=MESSAGE_TEXT, reply_markup=new_main_keyboard())
-                
                 # Небольшая пауза между сообщениями одному пользователю
                 await asyncio.sleep(0.1)
                 
@@ -60,7 +56,6 @@ async def main():
                 print(f"Лимит превышен. Ждем {e.retry_after} сек.")
                 await asyncio.sleep(e.retry_after)
                 # Повторная попытка (упрощенно)
-                await bot.send_message(user_id, MESSAGE_TEXT, reply_markup=new_main_keyboard())
                 await bot.send_message(user_id, NEW_VERSION_TEXT, reply_markup=new_main_keyboard())
                 
             except TelegramForbiddenError:
