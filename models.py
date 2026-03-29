@@ -57,8 +57,8 @@ class UserSettings(Base):
     __tablename__ = "user_settings"
 
     user_id: Mapped[int] = mapped_column(primary_key=True)
-    utc_offset: Mapped[int] = mapped_column(nullable=False)
-    notify_time: Mapped[time] = mapped_column(Time, nullable=False)
+    utc_offset: Mapped[int] = mapped_column(nullable=False, default=3)
+    notify_time: Mapped[time] = mapped_column(Time, nullable=False, default=time(9, 0))
     self_description: Mapped[Optional[str]] = mapped_column(String(500))
 
 class UserAccount(Base):
