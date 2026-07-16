@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 # Инициализация клиента OpenRouter (OpenAI-совместимый) [web:45][web:49][web:83]
 client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
+    base_url="https://api.aitunnel.ru/v1/",
     api_key=OPENROUTER_API_KEY,
 )
 
