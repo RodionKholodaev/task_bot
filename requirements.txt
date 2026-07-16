@@ -5,5 +5,5 @@ openai
 apscheduler
 yookassa
 apscheduler
-aiosqlite
 httpx
+aiosqlite

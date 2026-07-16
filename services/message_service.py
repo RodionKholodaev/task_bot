@@ -92,8 +92,8 @@ class MessageService:
             
             return items
         else:
-            logger.error(f"попытка создать неизвестный тип! {result["type"]}")
-            raise ValueError(f"попытка создать неизвестный тип! {result["type"]}")
+            logger.error(f"попытка создать неизвестный тип! {result['type']}")
+            raise ValueError(f"попытка создать неизвестный тип! {result['type']}")
 
 
 

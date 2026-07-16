@@ -48,6 +48,7 @@ async def ask_llm(description: str, system_msg:str) -> dict:
             print("попал в exception")
             # На проде лучше логировать ошибку
             error=e
+            logger.info(f"Ошибка: {e}")
             await asyncio.sleep(0.5)
 
     return {"error": error}
