@@ -46,6 +46,7 @@ async def ask_llm(description: str, system_msg:str) -> dict:
 
         except Exception as e:
             print("попал в exception")
+            print(f"Ошибка: {e}")
             # На проде лучше логировать ошибку
             error=e
             logger.info(f"Ошибка: {e}")
