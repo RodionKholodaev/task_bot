@@ -35,7 +35,7 @@ def setup_logging():
     ]
 
     for logger_name in quiet_loggers:
-        logging.getLogger(logger_name).setLevel(logging.WARNING)
+        logging.getLogger(logger_name).setLevel(logging.DEBUG)
 
     # Отдельный совет по SQLAlchemy:
     # Если начнешь ловить ошибки в БД, временно поставь ему INFO или DEBUG:
