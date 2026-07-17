@@ -7,7 +7,7 @@ from config import OPENROUTER_API_KEY
 import logging
 logger = logging.getLogger(__name__)
 
-# Инициализация клиента OpenRouter (OpenAI-совместимый) [web:45][web:49][web:83]
+
 client = OpenAI(
     base_url="https://api.aitunnel.ru/v1/",
     api_key=OPENROUTER_API_KEY,
@@ -24,7 +24,7 @@ async def ask_llm(description: str, system_msg:str) -> dict:
             print("перед получением ответа")
             # Вызов chat completion через OpenRouter [web:45][web:49][web:76]
             response = client.chat.completions.create(
-                model="google/gemini-2.0-flash-lite-001",
+                model="gemini-2.5-flash-lite",
                 messages=[
                     {"role": "system", "content": system_msg},
                     {"role": "user", "content": user_msg},
