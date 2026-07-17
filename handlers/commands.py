@@ -174,7 +174,7 @@ async def show_item_by_category(message: Message, s: AsyncSession):
         await message.answer(
             answer,
             reply_markup=shopping_inline(i.id), # type: ignore
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
 
 #  вывод задач на день (вспомогательная функция)
@@ -412,13 +412,13 @@ async def subscription(message: Message, s: AsyncSession, bot: Bot):
     
     if is_pro:
         # Для Pro просто выводим инфо с датой
-        await message.answer(ans, parse_mode="Markdown")
+        await message.answer(ans, parse_mode="HTML")
     else:
         # Для Free добавляем кнопки покупки и приглашения
         bot_info = await bot.get_me()
         await message.answer(
             ans, 
-            parse_mode="Markdown"
+            parse_mode="HTML"
         ) # reply_markup=buy_inline(user_id, bot_info.username),
 
 
@@ -566,7 +566,7 @@ async def handle_reply(message: Message, s: AsyncSession):
             await message.answer(
                 response_text,
                 reply_markup=task_inline(entity.id),  # type: ignore
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
     elif type =="shopping_list":
         for entity in entities:
@@ -574,7 +574,7 @@ async def handle_reply(message: Message, s: AsyncSession):
             await message.answer(
                 response_text,
                 reply_markup=shopping_inline(entity.id), # type: ignore
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
 
 
@@ -644,7 +644,7 @@ async def process_user_message(message: Message, text:str, s: AsyncSession):
                 await message.answer(
                     response_text,
                     reply_markup=task_inline(entity.id), # type: ignore
-                    parse_mode="Markdown"
+                    parse_mode="HTML"
                 )
 
     elif data_message["type"]=="shopping_list":
@@ -654,7 +654,7 @@ async def process_user_message(message: Message, text:str, s: AsyncSession):
                 await message.answer(
                     response_text,
                     reply_markup=shopping_inline(entity.id), # type: ignore
-                    parse_mode="Markdown"
+                    parse_mode="HTML"
                 )
 
 

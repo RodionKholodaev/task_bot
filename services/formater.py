@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from models import SubscriptionTypes, UserAccount
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging 
+import html
 logger = logging.getLogger(__name__)
 
 class Formater:
@@ -183,13 +184,13 @@ class Formater:
 
         status = "добавлена" if make_task else "обновлена"
         response_text = (
-            f"✅ **Задача {status}!**\n\n"
-            f"📝 **Что:** {task.description}\n"
-            f"📁 **Категория:** {cat_text}\n"
-            f"📅 **Дата:** {date_text}\n"
-            f"⏰ **Время:** {time}\n"
-            f"🚨 **Дата напоминания:** {remind_date_str}\n"
-            f"⏱️ **Время напоминания:** {remind_time}\n"
+            f"✅ <b>Задача {status}!</b>\n\n"
+            f"📝 <b>Что:</b> {task.description}\n"
+            f"📁 <b>Категория:</b> {cat_text}\n"
+            f"📅 <b>Дата:</b> {date_text}\n"
+            f"⏰ <b>Время:</b> {time}\n"
+            f"🚨 <b>Дата напоминания:</b> {remind_date_str}\n"
+            f"⏱️ <b>Время напоминания:</b> {remind_time}\n"
             f"🆔 ID задачи: {task.id}"
         )
 
@@ -217,11 +218,11 @@ class Formater:
         cat_display = categories_map.get(item.category, item.category or "Не указана") # type: ignore 
 
         response_text = (
-            f"🛒 **Товар добавлен в список!**\n\n"
-            f"📦 **Что:** {item.item}\n"
-            f"🔢 **Кол-во:** {quantity_text}\n"
-            f"📁 **Категория:** {cat_display}\n"
-            f"✅ **Статус:** {'Куплено' if item.is_bought else 'В списке'}\n\n"
+            f"🛒 <b>Товар добавлен в список!</b>\n\n"
+            f"📦 <b>Что:</b> {item.item}\n"
+            f"🔢 <b>Кол-во:</b> {quantity_text}\n"
+            f"📁 <b>Категория:</b> {cat_display}\n"
+            f"✅ <b>Статус:</b> {'Куплено' if item.is_bought else 'В списке'}\n\n"
             f"🆔 ID товара: {item.id}"
         )
         
@@ -235,7 +236,7 @@ class Formater:
         quantity_text = f"{amount_val} {item.unit}" if item.amount else "" # type: ignore 
 
         response_text = (
-            f"*{item.item} {quantity_text}*\n"
+            f"<b>{item.item} {quantity_text}</b>\n"
             f"ID товара: {item.id}"
         )
         return response_text
@@ -266,7 +267,7 @@ class Formater:
     def format_sub_info(account: UserAccount) -> tuple[str, bool]:
         if account.subscription == SubscriptionTypes.FREE:
             ans = (
-                "У вас подписка **Free**\n"
+                "У вас подписка <b>Free</b>\n"
                 "Вы можете хранить максимум 50 покупок и 50 задач\n"
                 "Оформите Pro, чтобы не иметь ограничений в использовании сервиса"
             )
@@ -277,10 +278,10 @@ class Formater:
             date_str = ""
             if account.subscription_until:
                 # Выведет в формате: 28.03.2026
-                date_str = f"\nДействительна до: **{account.subscription_until.strftime('%d.%m.%Y')}**"
+                date_str = f"\nДействительна до: <b>{account.subscription_until.strftime('%d.%m.%Y')}</b>**"
             
             ans = (
-                "У вас подписка **Pro** 💎\n"
+                "У вас подписка <b>Pro</b> 💎\n"
                 "Вы можете пользоваться сервисом без ограничений"
                 f"{date_str}"
             )
